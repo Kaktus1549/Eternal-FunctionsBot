@@ -15,7 +15,6 @@ from datetime import datetime, timedelta
 from sys import exit
 import logging
 import os
-from typing import Optional
 
 # Logging
 print(f"{COLOR_GREEN}Setting up logging...{COLOR_RESET}")
