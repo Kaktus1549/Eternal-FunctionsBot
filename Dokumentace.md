@@ -1,6 +1,6 @@
 # Documentation for Eternal Gaming Function Bot
 
-This is documentation for Eternal Gaming Function Bot. This bot is used for managing VIPs, showing leaderboard and staff information. Bot is written in Python and uses library discord.py and others located in requirements.txt. Bot imports config.json from folder ./config. If file is not found, bot will create one with default values.
+This is documentation for Eternal Gaming Function Bot. This bot is used for managing VIPs, showing leaderboard and staff information. Bot is written in Python and uses library discord.py and others located in requirements.txt. Bot imports config.json from folder ./config. If file is not found, bot will create one with default values. Bot stores logs in ./logs folder.
 
 ## Config
 
