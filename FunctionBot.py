@@ -445,6 +445,94 @@ def check_roles(member):
             allow = True
             break
     return allow
+async def info_on_ready():
+    try:
+        info_channel = FuncBot.get_channel(int(settings['info_settings']['bot']['embed_channel_id']))
+    except Exception as e:
+        console_log(f"Something went wrong while getting the main board channel for info, please check the config file! Error: {e}", "error")
+        return
+    messages = []
+    async for message in info_channel.history(limit=settings['info_settings']['bot']['message_limit']):
+        messages.append(message)
+    info_embed = discord.Embed(title="Info", description=settings['info_settings']['bot']['embed_text'], color=discord.Color.green())
+    info_embed.set_thumbnail(url=info_channel.guild.icon)
+    info_view = InfoButtons(get_departments_settings())
+    if len(messages) == 0:
+        console_log("There are no messages in the channel!", "info")
+        console_log(f"Creating a new message in {info_channel}...", "info")
+        await info_channel.send(embed=info_embed, view=info_view)
+    elif len(messages) == 1:
+        console_log(f"Detected message in {info_channel}, identifying it...", "warning")
+        message_in_channel = messages[0]
+        if message_in_channel.author == FuncBot.user:
+            console_log("Message is from the bot, proceding to editing it...", "info")
+            await message_in_channel.edit(embed=info_embed, view=info_view)
+            console_log("Message edited!", "info")
+        else:
+            console_log("Message is not from the bot, proceding to deleting it...", "warning")
+            try:
+                await message_in_channel.delete()
+                console_log("Message deleted!", "info")
+            except discord.Forbidden:
+                console_log(f"I don't have permissions to delete messages in {info_channel}!", "error")
+                return
+            except Exception as e:
+                console_log(f"Something went wrong while deleting the message! Error: {e}", "error")
+                return
+            await info_channel.send(embed=info_embed, view=info_view)
+    else:
+        try:
+            console_log(f"Detected messages in {info_channel}, deleting {settings['info_settings']['bot']['message_limit']} messages...", "warning")
+            await info_channel.delete_messages(messages)
+            console_log("Messages deleted!", "info")
+            await info_channel.send(embed=info_embed, view=info_view)
+        except discord.Forbidden:
+            console_log(f"I don't have permissions to delete messages in {info_channel}!", "error")
+            return
+async def leader_on_ready():
+    try:
+        main_board_channel = FuncBot.get_channel(int(settings['leader_settings']['channel']['main_board_channel_id']))
+    except Exception as e:
+        console_log(f"Something went wrong while getting the main board channel for leader, please check the config file! Error: {e}", "error")
+        return
+    messages = []
+    async for message in main_board_channel.history(limit=settings['leader_settings']['channel']['main_board_message_limit']):
+        messages.append(message)
+    leader_embed = discord.Embed(title="Leaderboard", description=settings['leader_settings']['channel']['main_board_message'], color=discord.Color.green())
+    leader_embed.set_thumbnail(url=main_board_channel.guild.icon)
+    leader_view = LeaderButtons()
+    if len(messages) == 0:
+        console_log("There are no messages in the channel!", "info")
+        console_log(f"Creating a new message in {main_board_channel}...", "info")
+        await main_board_channel.send(embed=leader_embed, view=leader_view)
+    elif len(messages) == 1:
+        console_log(f"Detected message in {main_board_channel}, identifying it...", "warning")
+        message_in_channel = messages[0]
+        if message_in_channel.author == FuncBot.user:
+            console_log("Message is from the bot, proceding to editing it...", "info")
+            await message_in_channel.edit(embed=leader_embed, view=leader_view)
+            console_log("Message edited!", "info")
+        else:
+            console_log("Message is not from the bot, proceding to deleting it...", "warning")
+            try:
+                await message_in_channel.delete()
+                console_log("Message deleted!", "info")
+            except discord.Forbidden:
+                console_log(f"I don't have permissions to delete messages in {main_board_channel}!", "error")
+                return
+            except Exception as e:
+                console_log(f"Something went wrong while deleting the message! Error: {e}", "error")
+                return
+            await main_board_channel.send(embed=leader_embed, view=leader_view)
+    else:
+        try:
+            console_log(f"Detected messages in {main_board_channel}, deleting {settings['leader_settings']['channel']['main_board_message_limit']} messages...", "warning")
+            await main_board_channel.delete_messages(messages)
+            console_log("Messages deleted!", "info")
+            await main_board_channel.send(embed=leader_embed, view=leader_view)
+        except discord.Forbidden:
+            console_log(f"I don't have permissions to delete messages in {main_board_channel}!", "error")
+            return
 
 # Importing libraries
 
@@ -959,9 +1047,15 @@ async def update_section(ctx, department="-1", name="-1", role="-1"):
         return  
 
 # Discord bot events
+@FuncBot.event
+async def on_ready():
+    await info_on_ready()
+    await leader_on_ready()
+    console_log(f"Logged in as {FuncBot.user.name}!", "info")
+    console_log("Bot is ready!", "info")
 
 
-
+# Runs the discord bot
 if settings['discord_settings']['token'] == "TOKEN":
     console_log("Discord bot TOKEN not found!", "error")
     exit()
