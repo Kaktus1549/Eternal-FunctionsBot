@@ -57,6 +57,40 @@ If config.json is not found, bot will create one with default values:
 
 Config is divided into 4 sections: discord_settings, vip_settings, leader_settings and info_settings. discord_settings contains values of token, prefix for bot and role that can sync slash commands. vip_settings contains values for role that is allowed to remove VIPs, location of file with VIPs and ID of roles with VIP. leader_settings contains values for leaderboard channel, message and location of file with stats. info_settings contains values for bot info channel, message and location of file with hiearchy. Message limit is how many messages will be check and eventually deleted in channel.
 
+## Global
+
+There are some global functions that are used in multiple sections. Here is list and description of them:
+
+### get_current_time()
+
+- Gets current time in format: YYYY-MM-DD HH:MM:SS
+```python
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return current_datetime
+```
+
+### console_log(message, status)
+
+- As input takes message and status
+- Prints message to console with current time provided by get_current_time() and based on status it prints different color
+```python
+    if status == "info":
+        logger.info(message)
+    elif status == "error":
+        logger.error(message)
+    elif status == "warning":
+        logger.warning(message)
+    else:
+        logger.debug(message)
+```
+### create_config()
+
+- If config.json is not found, bot will create one with default values
+
+### open_config()
+
+- Loads config.json, if not detected, function calls create_config()
+
 ## VIP
 
 VIP section has multiple functions. Here is list and description of them:
@@ -199,6 +233,13 @@ There are also classes for buttons, basically there is main board in channel wit
             return
 ```
 
+### leader_on_ready()
+
+- From config.json loads channel ID, message ID and message limit
+- Then checks content of channel, he goes through messages specified by message limit
+- If message is not found, he creates new one
+- If message is found and its from bot, he edits it
+- If message is found and its not from bot or there are multiple messages, he deletes them and creates new one
 
 ## Info
 
@@ -254,3 +295,10 @@ async def button_callback(self, interaction: discord.Interaction):
         button_embed = print_subdepartments(interaction.data['custom_id'], interaction.guild)
         await interaction.response.send_message(embed=button_embed, ephemeral=True)
 ```
+### info_on_ready()
+
+- From config.json loads channel ID, message ID and message limit
+- Then checks content of channel, he goes through messages specified by message limit
+- If message is not found, he creates new one
+- If message is found and its from bot, he edits it
+- If message is found and its not from bot or there are multiple messages, he deletes them and creates new one
