@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from sys import exit
 import logging
 import os
+from typing import Optional
 
 # Logging
 print(f"{COLOR_GREEN}Setting up logging...{COLOR_RESET}")
@@ -445,6 +446,59 @@ def check_roles(member):
             allow = True
             break
     return allow
+def info_help(ctx):
+    if not check_roles(ctx.author):
+        help_embed = discord.Embed(title="Help", description="My job is to show the members of each department and section in the server!", color=discord.Color.green())
+        help_embed.add_field(name="Info channel", value=f"Channel with the info is here: <#{settings['info_settings']['bot']['embed_channel_id']}>", inline=False)
+        try:
+            # tryes to get bot avatar
+            help_embed.set_thumbnail(url=FuncBot.user.avatar)
+        except:
+            # if it fails, sets the default avatar
+            help_embed.set_thumbnail(url=ctx.guild.icon)
+        help_embed.set_footer(text="Made by Kaktus1549")
+        return help_embed
+    help_embed = discord.Embed(title="Help", description="My job is to show the members of each department and section in the server!", color=discord.Color.green())
+    help_embed.add_field(name="priority", value="Sets the priority of a department, the lower the number, the higher the priority.", inline=False)
+    help_embed.add_field(name="add_department", value="Adds a department to the hiearchy.", inline=False)
+    help_embed.add_field(name="remove_department", value="Removes a department from the hiearchy.", inline=False)
+    help_embed.add_field(name="update_department", value="Updates the settings of a department.", inline=False)
+    help_embed.add_field(name="add_section", value="Adds a section to a department.", inline=False)
+    help_embed.add_field(name="remove_section", value="Removes a section from a department.", inline=False)
+    help_embed.add_field(name="update_section", value="Updates the settings of a section.", inline=False)
+    help_embed.add_field(name="reload", value="Reloads the config file.", inline=False)
+    help_embed.add_field(name="sync", value="Syncs the slash commands with discord.", inline=False)
+    try:
+        # tryes to get bot avatar
+        help_embed.set_thumbnail(url=FuncBot.user.avatar)
+    except:
+        # if it fails, sets the default avatar
+        help_embed.set_thumbnail(url=ctx.guild.icon)
+    help_embed.set_footer(text="Made by Kaktus1549")
+    return help_embed
+def leader_help(ctx):
+    help_embed = discord.Embed(title="Help", description="Here are all commands of the bot", color=discord.Color.dark_blue())
+    help_embed.add_field(name=f"**/stats <SteamID/Username>**", value="Shows the stats of the user -> Example: **/stats 76561198119241234@steam** or **/stats Kaktus1549**", inline=False)
+    help_embed.add_field(name=f"**/scpleaderboard <PageNumber>**", value="Shows the leaderboard of the server", inline=False)
+    main_board_channel = "<#" + settings['leader_settings']['channel']['main_board_channel_id'] + ">"
+    help_embed.add_field(name="TOP 10 leaderboards", value=f"You can find them in the main board message -> {main_board_channel}", inline=False)
+    help_embed.set_footer(text="Made by Kaktus1549")
+    try:
+        help_embed.set_thumbnail(url=FuncBot.user.avatar.url)
+    except AttributeError:
+        help_embed.set_thumbnail(url=ctx.guild.icon)
+    return help_embed
+def vip_help(ctx):
+    help_embed = discord.Embed(title="VIP bot help", description="Hi, I'm VIP bot! I'm here to activate VIP for users, who have VIP role on discord server!\nWhat are my commands?", color=discord.Color.dark_blue())
+    help_embed.add_field(name="Vipactivate command", value="**/vipactivate <steamid>** -> Activates VIP on Eternal Gaming if user has VIP role on discord server", inline=False)
+    help_embed.add_field(name="Remove command", value="**/remove <steamid | discordid>** -> Admin command, removes vip from user", inline=False)
+    help_embed.add_field(name="Help command", value="**/help** -> Shows this message", inline=False)
+    try:
+        help_embed.set_thumbnail(url=FuncBot.user.avatar.url)
+    except AttributeError:
+        help_embed.set_thumbnail(url=ctx.guild.icon)
+    help_embed.set_footer(text="Made by Kaktus1549")
+    return help_embed
 async def info_on_ready():
     try:
         info_channel = FuncBot.get_channel(int(settings['info_settings']['bot']['embed_channel_id']))
@@ -707,7 +761,31 @@ class InfoButtons(discord.ui.View):
     async def button_callback(self, interaction: discord.Interaction):
         button_embed = print_subdepartments(interaction.data['custom_id'], interaction.guild)
         await interaction.response.send_message(embed=button_embed, ephemeral=True)
-
+class HelpButtons(discord.ui.View):
+    def __init__(self, messageEmbed, help_type, ctx=None):
+        super().__init__(timeout=180)
+        self.embed = messageEmbed
+        self.help_type = help_type
+        self.ctx = ctx
+    
+    @discord.ui.button(label="Info help", style=discord.ButtonStyle.green)
+    async def info_help_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        if self.help_type == "info":
+            return
+        else:
+            await interaction.response.edit_message(embed=info_help(self.ctx), view=HelpButtons(info_help(self.ctx), "info", self.ctx))
+    @discord.ui.button(label="Leader help", style=discord.ButtonStyle.green)
+    async def leader_help_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        if self.help_type == "leader":
+            return
+        else:
+            await interaction.response.edit_message(embed=leader_help(self.ctx), view=HelpButtons(leader_help(self.ctx), "leader", self.ctx))
+    @discord.ui.button(label="VIP help", style=discord.ButtonStyle.green)
+    async def vip_help_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        if self.help_type == "vip":
+            return
+        else:
+            await interaction.response.edit_message(embed=vip_help(self.ctx), view=HelpButtons(vip_help(self.ctx), "vip", self.ctx))
 
 # Discord bot settings and intents
 try:
@@ -721,7 +799,25 @@ except Exception as e:
     console_log(f"There was an error while inicializing the bot: {e}", "error")
     exit()
 
+
 # Discord bot commands
+
+# Removes default help command
+FuncBot.remove_command("help")
+
+# Adds custom help command
+@FuncBot.command(name="help")
+async def help(ctx, help_type="info"):
+    if help_type == "info":
+        await ctx.send(embed=info_help(ctx), view=HelpButtons(info_help(ctx), "info", ctx))
+    elif help_type == "leader":
+        await ctx.send(embed=leader_help(ctx), view=HelpButtons(leader_help(ctx), "leader", ctx))
+    elif help_type == "vip":
+        await ctx.send(embed=vip_help(ctx), view=HelpButtons(vip_help(ctx), "vip", ctx))
+    else:
+        wrong_help_embed = discord.Embed(title="Error", description="Invalid help type, please use one of these: info, leader, vip", color=discord.Color.red())
+        await ctx.send(embed=wrong_help_embed)
+
 @FuncBot.hybrid_command(description="this command can be executed only by owner of bot") # Command will sync slash commands with discord
 async def sync(ctx):
     allowed_roles = settings['discord_settings']['sync']
