@@ -65,7 +65,7 @@ VIP section has multiple functions. Here is list and description of them:
 
 - Loads VIPs from file specified in config.json
 - Can return 3 values: <br>
-    - Array called data (contains data from VIPs file) <br>
+    - Dictionary called data (contains data from VIPs file) <br>
     - 1 which means error <br>
     - 2 which means file not found/empty
 
@@ -164,7 +164,7 @@ Leaderboard section has multiple functions. Here is list and description of them
 - Returns:
     - -1 if stats file was not found
     - -2 if stats file is empty
-    - array called return_list with 10 players on page
+    - Dictionary called return_list with 10 players on page
 
 ### get_pages()
 
@@ -197,4 +197,60 @@ There are also classes for buttons, basically there is main board in channel wit
                 stats_embed.add_field(name=f"{i+1}. __{SCPKills[i]['Username']}__", value=f"**SCP Kills:** {SCPKills[i]['SCPKills']}", inline=False)
             await interaction.response.send_message(embed=stats_embed, ephemeral=True)
             return
+```
+
+
+## Info
+
+Info section has multiple functions. Here is list and description of them:
+
+### open_hiearchy()
+
+- Loads hiearchy from file specified in config.json
+- Returns -1 if error, otherwise returns hiearchy
+
+### save_hiearchy(hiearchy)
+
+- As input takes hiearchy dictionary
+- Saves hiearchy to file specified in config.json, otherwise returns -1 (error)
+
+### get_departments_settings()
+
+- Loads hiearchy via open_hiearchy(), then finds all departments and their settings
+- Saves them to dictionary "department_settings" and returns it sorted by button_privilege, otherwise returns -1 (error)
+- Example of settings:
+```json
+"scp": {
+        "settings": [
+            "red", --> button color
+            "SCP:SL sekce", --> button text
+            "1" --> button privilege
+        ]
+    }
+```
+
+### color_from_hierarchy(color, isButton=True)
+
+- As input takes color and if it is button or not
+- Converts colors from string to discord.Color or discord.ButtonStyle (depends on isButton)
+
+### print_subdepartments(button_id, guild)
+
+- As input takes button_id and guild
+- Depending on button_id, prints subdepartments and their members based on roleID
+- Returns embed with subdepartments and members, otherwise embed with error
+
+### check_roles(member)
+
+- As input takes member
+- Checks if member has any of roles specified in config.json
+- Returns True if yes, otherwise False
+
+### discord.ui
+
+There are also classes for buttons, basically there is main board in channel with buttons, in this class is specified button text and what it does. Example:
+```python
+async def button_callback(self, interaction: discord.Interaction):
+        button_embed = print_subdepartments(interaction.data['custom_id'], interaction.guild)
+        await interaction.response.send_message(embed=button_embed, ephemeral=True)
 ```

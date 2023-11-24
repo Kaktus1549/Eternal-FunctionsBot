@@ -351,8 +351,102 @@ def get_pages():
     if len(statistics) % 10 != 0:
         pages = pages + 1
     return pages
+def open_hiearchy():
+    try:
+        with open(settings['info_settings']['hiearchy']['file'], "r", encoding=settings['info_settings']['hiearchy']['encoding']) as hiearchy_file:
+            return json.load(hiearchy_file)
+    except Exception as e:
+        console_log(f"There was an error while opening the hiearchy file: {e}", "error")
+        return -1
+def save_hiearchy(hiearchy):
+    try:
+        with open(settings['info_settings']['hiearchy']['file'], "w", encoding=settings['info_settings']['hiearchy']['encoding']) as hiearchy_file:
+            json.dump(hiearchy, hiearchy_file, indent=4)
+    except Exception as e:
+        console_log(f"There was an error while saving the hiearchy file: {e}", "error")
+        return -1
+def get_departments_settings():
+    try:
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            return -1
+        departments_settings = {}
+        for department in hiearchy:
+            try:
+                department_settings = {
+                    f"{department}": {
+                    "button_color": f"{hiearchy[department]['settings'][0]}",
+                    "button_text": f"{hiearchy[department]['settings'][1]}",
+                    "button_privilege": f"{hiearchy[department]['settings'][2]}"}
+                    }
+            except KeyError:
+                console_log(f"Department {department} doesn't have settings, using default settings...", "warning")
+                department_settings = {
+                    f"{department}": {
+                    "button_color": "grey",
+                    "button_text": f"{department}",
+                    "button_privilege": "1000"}
+                    }
+            departments_settings.update(department_settings)
+        return dict(sorted(departments_settings.items(), key=lambda x: int(x[1]['button_privilege'])))
+    except Exception as e:
+        console_log(f"There was an error while processing the hiearchy file: {e}", "error")
+        return -1
+def color_from_hierarchy(color, isButton=True):
+    if isButton:
+        if color == "red":
+            color = discord.ButtonStyle.red
+        elif color == "green":
+            color = discord.ButtonStyle.green
+        elif color == "grey":
+            color = discord.ButtonStyle.grey
+        elif color == "blue":
+            color = discord.ButtonStyle.blurple
+        else:
+            color = discord.ButtonStyle.grey
+    else:
+        if color == "red":
+            color = discord.Color.red()
+        elif color == "green":
+            color = discord.Color.green()
+        elif color == "grey":
+            color = discord.Color.greyple()
+        elif color == "blue":
+            color = discord.Color.blurple()
+        else:
+            color = discord.Color.greyple()
+    return color
+def print_subdepartments(button_id, guild):
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        return discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red())
+    try:
+        department = hiearchy[button_id]
+        color = color_from_hierarchy(department['settings'][0], False)
+        embed = discord.Embed(title=f"{department['settings'][1]}", description="", color=color)
+        for roles in department:
+            if roles != "settings":
+                members_with_role = guild.get_role(int(department[roles])).members
+                description = ""
+                for member in members_with_role:
+                    description += f"{member.mention}\n"
+                embed.add_field(name=f"{roles}", value=description, inline=False)
+        return embed
+    except Exception as e:
+        console_log(f"Ooops, something went wrong! Error: {e}", "error")
+        return discord.Embed(title="Error", description="We are having some technical difficulties, please try again later!", color=discord.Color.red())
+def check_roles(member):
+    user_roles = member.roles
+    allowed_roles = settings['info_settings']['bot']['allowed_roles']
 
+    allow = False
+    for role in user_roles:
+        if str(role.id) in allowed_roles:
+            allow = True
+            break
+    return allow
 
+# Importing libraries
 
 console_log("Importing libraries...", "info")
 try:
@@ -507,6 +601,24 @@ class InteractiveLeaderboard(discord.ui.View):
                 new_embed.add_field(name=f"{i+1+self.listValue}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
             new_embed.set_footer(text=f"Page {self.listValue // 10 + 1}/{get_pages()}")
             await interaction.response.edit_message(embed=new_embed, view=self)
+class InfoButtons(discord.ui.View):
+    def __init__(self, buttons_config):
+        super().__init__(timeout=None)
+        if buttons_config == -1:
+            return -1
+        self.buttons_config = buttons_config
+
+        for button_data in buttons_config: 
+            label = buttons_config[button_data]['button_text']
+            color = color_from_hierarchy(buttons_config[button_data]['button_color'], True)
+            custom_id = button_data
+            button = discord.ui.Button(label=label, custom_id=custom_id, style=color)
+            button.callback = self.button_callback
+            self.add_item(button)
+    
+    async def button_callback(self, interaction: discord.Interaction):
+        button_embed = print_subdepartments(interaction.data['custom_id'], interaction.guild)
+        await interaction.response.send_message(embed=button_embed, ephemeral=True)
 
 
 # Discord bot settings and intents
@@ -681,6 +793,170 @@ async def scpleaderboard(ctx, page=1):
             leader_embed.add_field(name=f"{(page - 1) * 10 + i + 1}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
         leader_embed.set_footer(text=f"Page {page}/{get_pages()}")
         await ctx.send(embed=leader_embed, view=InteractiveLeaderboard(leader_embed, page))
+@FuncBot.hybrid_command()
+async def priority(ctx, department="-1", priority="-1"):
+
+    if not check_roles(ctx.author):
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    if department == "-1" or priority == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department and the priority!", color=discord.Color.red()))
+        return
+    if priority is not int and priority.isnumeric() == False:
+        await ctx.send(embed=discord.Embed(title="Error", description="Priority needs to be a number!", color=discord.Color.red()))
+        return
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+        return
+    try:
+        hiearchy[department]['settings'][2] = int(priority)
+        save_hiearchy(hiearchy)
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Priority of {department} was set to {priority}!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while setting the priority: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command()
+async def add_department(ctx, name="-1", color="grey", text="-1", priority="1000"):
+    priority = str(priority)
+    if not check_roles(ctx.author):
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    if name == "-1" or text == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name and the text!", color=discord.Color.red()))
+        return
+    if priority is not int and priority.isnumeric() == False:
+        await ctx.send(embed=discord.Embed(title="Error", description="Priority needs to be a number!", color=discord.Color.red()))
+        return
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+        return
+    try:
+        hiearchy[name] = {
+            "settings": [color, text, priority]
+        }
+        save_hiearchy(hiearchy)
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was added!", color=discord.Color.green()))
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the department: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command()
+async def remove_department(ctx, name="-1"):
+    if not check_roles(ctx.author):
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    if name == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name!", color=discord.Color.red()))
+        return
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+        return
+    try:
+        del hiearchy[name]
+        save_hiearchy(hiearchy)
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was removed!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the department: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command()
+async def update_department(ctx, name="-1", color="-1", text="-1"):
+    if not check_roles(ctx.author):
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    if name == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to tell me the name of the department!", color=discord.Color.red()))
+        return
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+        return
+    try:
+        if color != "-1":
+            hiearchy[name]['settings'][0] = color
+        if text != "-1":
+            hiearchy[name]['settings'][1] = text
+        save_hiearchy(hiearchy)
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was updated!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the department: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command()
+async def add_section(ctx, department="-1", name="-1", role="-1"):
+    if not check_roles(ctx.author):
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    if department == "-1" or name == "-1" or role == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department, name and role!", color=discord.Color.red()))
+        return
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+        return
+    try:
+        hiearchy[department][name] = role
+        save_hiearchy(hiearchy)
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was added to {department}!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the section: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command()
+async def remove_section(ctx, department="-1", name="-1"):
+    if not check_roles(ctx.author):
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    if department == "-1" or name == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department and the name!", color=discord.Color.red()))
+        return
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+        return
+    try:
+        del hiearchy[department][name]
+        save_hiearchy(hiearchy)
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was removed from {department}!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Department or section not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the section: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command()
+async def update_section(ctx, department="-1", name="-1", role="-1"):
+    if not check_roles(ctx.author):
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    if department == "-1" or name == "-1" or role == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department, name and role!", color=discord.Color.red()))
+        return
+    hiearchy = open_hiearchy()
+    if hiearchy == -1:
+        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+        return
+    try:
+        hiearchy[department][name] = role
+        save_hiearchy(hiearchy)
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was updated in {department}!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Department or section not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the section: {e}", color=discord.Color.red()))
+        return  
 
 # Discord bot events
 
