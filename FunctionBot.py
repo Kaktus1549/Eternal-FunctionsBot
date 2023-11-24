@@ -88,10 +88,10 @@ def create_config():
     config = {
     "discord_settings":{
         "token": "TOKEN",
-        "prefix": "#",
-        "remove": "772112186927480832"
+        "prefix": "#"
     },
     "vip_settings":{
+        "remove": "772112186927480832",
         "json":{
             "file": "PATH/TO/VIP.JSON"
         },
@@ -253,14 +253,16 @@ def user_add(steamid, discord_id, vip_role):
 def user_remove(id):
     # id = steamid or discordid
     # Status -> 0 = OK, 1 = error, 2 = user not found
-    
+
     data = load_vips()
     if data == 1:
         return 1
+    if data == 2:
+        return 2
     for user in data:
         if str(user['DiscordID']) == str(id) or user['UserId'] == str(id) or user['UserId'] == ("!"+str(id)):
             data.remove(user)
-            with open(settings['json']['file'], 'w') as json_file:
+            with open(settings['vip_settings']['json']['file'], 'w') as json_file:
                 json.dump(data, json_file, indent=4)
             return 0
     return 2
