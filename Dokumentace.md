@@ -9,7 +9,8 @@ If config.json is not found, bot will create one with default values:
 {
     "discord_settings":{
         "token": "TOKEN",
-        "prefix": "#"
+        "prefix": "#",
+        "sync": "772112186927480832"
     },
     "vip_settings":{
         "remove": "772112186927480832",
@@ -54,7 +55,7 @@ If config.json is not found, bot will create one with default values:
 }
 ```
 
-Config is divided into 4 sections: discord_settings, vip_settings, leader_settings and info_settings. discord_settings contains values of token, prefix for bot. vip_settings contains values for role that is allowed to remove VIPs, location of file with VIPs and ID of roles with VIP. leader_settings contains values for leaderboard channel, message and location of file with stats. info_settings contains values for bot info channel, message and location of file with hiearchy. Message limit is how many messages will be check and eventually deleted in channel.
+Config is divided into 4 sections: discord_settings, vip_settings, leader_settings and info_settings. discord_settings contains values of token, prefix for bot and role that can sync slash commands. vip_settings contains values for role that is allowed to remove VIPs, location of file with VIPs and ID of roles with VIP. leader_settings contains values for leaderboard channel, message and location of file with stats. info_settings contains values for bot info channel, message and location of file with hiearchy. Message limit is how many messages will be check and eventually deleted in channel.
 
 ## VIP
 

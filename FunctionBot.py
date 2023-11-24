@@ -88,7 +88,8 @@ def create_config():
     config = {
     "discord_settings":{
         "token": "TOKEN",
-        "prefix": "#"
+        "prefix": "#",
+        "sync": "772112186927480832"
     },
     "vip_settings":{
         "remove": "772112186927480832",
@@ -294,7 +295,6 @@ except Exception as e:
 # discord.ui
 
 # Discord bot settings and intents
-
 try:
     prefix = settings['discord_settings']['prefix']
     intents = discord.Intents.default()
@@ -305,6 +305,121 @@ try:
 except Exception as e:
     console_log(f"There was an error while inicializing the bot: {e}", "error")
     exit()
+
+# Discord bot commands
+@FuncBot.hybrid_command(description="this command can be executed only by owner of bot") # Command will sync slash commands with discord
+async def sync(ctx):
+    allowed_roles = settings['discord_settings']['sync']
+    allowed_roles = allowed_roles.split(",")
+    if str(ctx.author.id) in allowed_roles:
+        await ctx.send("Syncing slash commands with discord...")
+        await FuncBot.tree.sync()
+        await ctx.send("Sync tree was runned sucessfully!")
+@FuncBot.hybrid_command(name="vipactivate", description="Activates VIP on SCP:SL, if user has VIP role on discord server")
+async def vipactivate(ctx, steam_id="-1"):
+    steamid = steam_id
+    if steamid == "-1" or steamid_validation(steamid) == 1:
+        invalid_id_embed = discord.Embed(title="Invalid SteamID!", description="Please provide valid SteamID!", color=0xff0000)
+        invalid_id_embed.add_field(name="SteamID example", value="12345678901234567@steam", inline=False)
+        await ctx.send(embed=invalid_id_embed)
+        return
+    exists = user_check(steamid, ctx.author.id)
+    if exists == False:
+        user_roles = ctx.author.roles
+        found_role = False
+        for i in settings['vip_settings']['roles']:
+            if found_role == True:
+                break
+            if settings['vip_settings']['roles'][i] == "ROLE_ID":
+                console_log(f"Role {i} has not been set in settings.json!", "error")
+                return_message = "Disocrd bot has not been configured correctly, please contact bot owner!"
+            else:
+                for user_role in user_roles:
+                    if settings['vip_settings']['roles'][i] == str(user_role.id):
+                        vip_status = i
+                        found_role = True
+                        break
+                    else:
+                        found_role = False
+                        return_message = f"VIP role not found for user **{ctx.author.name}**!"
+        if found_role == True:
+            return_message = f"Activating VIP for user **{ctx.author.name}**!"
+            return_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
+            return_embed = await ctx.send(embed=return_embed)
+            console_log(f"{ctx.author.name} has issued command vipactivate", "info")
+            console_log(f"VIP role: {vip_status}", "info")
+            try:
+                status = user_add(steamid, ctx.author.id, vip_status)
+                if status == 0:
+                    console_log(f"VIP for user {ctx.author.name} has been activated!", "info")
+                    vip_embed = discord.Embed(title="VIP activated!", description=f"VIP has been activated for user {ctx.author.name}!", color=0x00ff00)
+                    vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                    vip_embed.add_field(name="SteamID", value=steamid, inline=True)
+                    vip_embed.add_field(name="VIP role", value=vip_status, inline=True)
+                    return_embed = await return_embed.edit(content=None ,embed=vip_embed)
+                else:
+                    error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                    error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                    error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                    await ctx.send(embed=error_vip_embed)
+            except Exception as error:
+                console_log(f"An error has occured while activating VIP for user {ctx.author.name}! Error: {error}", "error")
+                await ctx.send(f"An error has occured while activating VIP. Try again later or contact bot owner!")
+        else:
+            console_log(f"{ctx.author.name} has issued command vipactivate, but doesn't have any VIP role!", "info")
+            no_vip_embed = discord.Embed(title="VIP activation failed!", description=return_message, color=0xff0000)
+            no_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+            await ctx.send(embed=no_vip_embed)
+    elif exists == 1:
+        error_vip_embed = discord.Embed(title="Error!", description=f"Your discord account **{ctx.author.name}** has already VIP activated!", color=0xff0000)
+        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+        await ctx.send(embed=error_vip_embed)
+    elif exists == 2:
+        error_vip_embed = discord.Embed(title="Error!", description=f"Provided SteamID **{steamid}** has already VIP activated!", color=0xff0000)
+        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+        await ctx.send(embed=error_vip_embed)
+    elif exists == 3:
+        error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+        error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+        await ctx.send(embed=error_vip_embed)
+@FuncBot.hybrid_command(name="removevip", description="Only admins can use this command!")
+async def removevip(ctx, id="-1"):
+    if id == "-1":
+        invalid_id_embed = discord.Embed(title="Invalid ID!", description="Please provide valid SteamID or DiscordID!", color=0xff0000)
+        await ctx.send(embed=invalid_id_embed)
+        return
+    allowed_users = settings['vip_settings']['remove'].split(', ')
+    for user in allowed_users:
+        if user == str(ctx.author.id):
+            has_admin = True
+            break
+        else:
+            has_admin = False
+
+    if has_admin == True:
+        if id.startswith('<@') and id.endswith('>'):
+            # User mention is provided
+            user_mention = id
+            remove_user_id = user_mention[2:-1] # Removing <@ and > from mention
+        else:
+            remove_user_id = id
+        remove = user_remove(remove_user_id)
+        if remove == 0:
+            console_log(f"VIP has been removed for id {remove_user_id} by {ctx.author.name}", "info")
+            success_embed = discord.Embed(title="Success!", description=f"VIP has been removed for id **{remove_user_id}**!", color=0x00ff00)
+            await ctx.send(embed=success_embed)
+        elif remove == 2:
+            error_embed = discord.Embed(title="Error!", description=f"Provided ID **{remove_user_id}** has no VIP!", color=0xff0000)
+            await ctx.send(embed=error_embed)
+        elif remove == 1:
+            error_embed = discord.Embed(title="Error!", description=f"An error has occured while removing VIP for id **{remove_user_id}**!", color=0xff0000)
+            await ctx.send(embed=error_embed)
+    else:
+        console_log(f"{ctx.author.name} has tried to remove VIP from user {id}, but doesn't have permission!", "info")
+        error_embed = discord.Embed(title="Error!", description="You don't have permission to use this command!", color=0xff0000)
+        await ctx.send(embed=error_embed)
+
 
 if settings['discord_settings']['token'] == "TOKEN":
     console_log("Discord bot TOKEN not found!", "error")
