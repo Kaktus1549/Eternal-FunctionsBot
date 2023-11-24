@@ -1,0 +1,46 @@
+{
+    "discord_settings": {
+        "token": "TOKEN",
+        "prefix": "#",
+        "sync": "772112186927480832"
+    },
+    "vip_settings": {
+        "remove": "772112186927480832",
+        "json": {
+            "file": "./config/vips.json"
+        },
+        "roles": {
+            "kontributor": "1151412247155965952",
+            "donator": "ROLE_ID",
+            "sponzor": "ROLE_ID",
+            "booster": "ROLEID",
+            "podporovatel": "ROLEID",
+            "investor": "ROLEID"
+        }
+    },
+    "leader_settings": {
+        "channel": {
+            "main_board_channel_id": "1140700941889310850",
+            "main_board_message": "Default text",
+            "main_board_message_limit": 150
+        },
+        "stats": {
+            "stats_file": "./config/PlayerData.json",
+            "encoding": "utf-8"
+        }
+    },
+    "info_settings": {
+        "bot": {
+            "embed_channel_id": "976221389734440981",
+            "embed_text": "EDIT_THIS",
+            "message_limit": 150,
+            "allowed_roles": [
+                "978277386091102218"
+            ]
+        },
+        "hiearchy": {
+            "file": "./config/hiearchy.json",
+            "encoding": "utf-8"
+        }
+    }
+}
