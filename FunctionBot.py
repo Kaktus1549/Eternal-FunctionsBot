@@ -267,6 +267,90 @@ def user_remove(id):
                 json.dump(data, json_file, indent=4)
             return 0
     return 2
+def user_stats(user):
+    # -1 means that stats file is not specified in config
+    # -2 means that user is not found in stats file
+    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
+        console_log("You need to specify the activity json file in the config file!", "error")
+        return -1, -1, -1, -1, -1, -1
+    # Open json files and return them
+    try:
+        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
+            statistics = json.load(stats_file)
+        user_statistics_filter = filter(lambda item: item['UserID'] == user or item['Username'] == user, statistics)
+        user_statistics = next(user_statistics_filter, None)
+    except FileNotFoundError:
+        console_log("Stats file not found, please check the config file!", "error")
+        return -1, -1, -1, -1, -1, -1
+    if user_statistics == None:
+        return -2, -2, -2, -2, -2, -2
+    else:
+        UserID = user_statistics['UserID']
+        Username = user_statistics['Username']
+        SCPKills = user_statistics['SCPKills']
+        HumanKills = user_statistics['HumanKills']
+        Deaths = user_statistics['Deaths']
+        TotalSeconds = user_statistics['TotalSeconds']
+        return UserID, Username, SCPKills, HumanKills, Deaths, TotalSeconds
+def get_stats(type):
+    # -1 means that stats file is not specified in config
+    # -2 means that stats file is empty
+    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
+        console_log("You need to specify the activity json file in the config file!", "error")
+        return -1
+    # Open json files and return them
+    try:
+        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
+            statistics = json.load(stats_file)
+        sorted_statistics = sorted(statistics, key=lambda k: k[type], reverse=True)
+    except FileNotFoundError:
+        console_log("Stats file not found, please check the config file!", "error")
+        return -1, -1, -1, -1, -1, -1
+    if sorted_statistics == None:
+        return -2
+    else:
+        top_10 = sorted_statistics[:10]
+        return top_10
+def all_players_list(index):
+    # -1 means that stats file is not specified in config
+    # -2 means that stats file is empty
+    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
+        console_log("You need to specify the activity json file in the config file!", "error")
+        return -1
+    # Open json files and return them
+    try:
+        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
+            statistics = json.load(stats_file)
+        sorted_statistics = sorted(statistics, key=lambda k: k['TotalScore'], reverse=True)
+    except FileNotFoundError:
+        console_log("Stats file not found, please check the config file!", "error")
+        return -1
+    if sorted_statistics == None:
+        return -2
+    else:
+        return_list = []
+        try:    
+            for i in range(10):
+                i = i + index
+                return_list.append(sorted_statistics[i])
+        finally:
+            return return_list       
+def get_pages():
+    # -1 means that stats file is not specified in config
+    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
+        console_log("You need to specify the activity json file in the config file!", "error")
+        return -1
+    # Open json files and return them
+    try:
+        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
+            statistics = json.load(stats_file)
+        pages = len(statistics) // 10
+    except FileNotFoundError:
+        console_log("Stats file not found, please check the config file!", "error")
+        return -1
+    if len(statistics) % 10 != 0:
+        pages = pages + 1
+    return pages
 
 
 
@@ -293,6 +377,137 @@ except Exception as e:
 
 
 # discord.ui
+class LeaderButtons(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="SCP Kills", style=discord.ButtonStyle.red, custom_id="scp")
+    async def scp_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        SCPKills = get_stats("SCPKills")
+        if SCPKills == -1:
+            error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        elif SCPKills == -2:
+            error_embed = discord.Embed(title="Error", description="Something went wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        else:
+            stats_embed = discord.Embed(title="Top 10 SCP Kills", description="Tady je top 10 hráčů s nejvíce zabitymi SCP", color=0xff0000)
+            for i in range(len(SCPKills)):
+                stats_embed.add_field(name=f"{i+1}. __{SCPKills[i]['Username']}__", value=f"**SCP Kills:** {SCPKills[i]['SCPKills']}", inline=False)
+            await interaction.response.send_message(embed=stats_embed, ephemeral=True)
+            return
+    @discord.ui.button(label="Human Kills", style=discord.ButtonStyle.blurple, custom_id="human")
+    async def human_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        HumanKills = get_stats("HumanKills")
+        if HumanKills == -1:
+            error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        elif HumanKills == -2:
+            error_embed = discord.Embed(title="Error", description="Something went wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        else:
+            stats_embed = discord.Embed(title="Top 10 Human Kills", description="Tady je top 10 hráčů s nejvíce zabitymi hráči za lidskou roli", color=discord.Color.blurple())
+            for i in range(len(HumanKills)):
+                stats_embed.add_field(name=f"{i+1}. __{HumanKills[i]['Username']}__", value=f"**Human Kills:** {HumanKills[i]['HumanKills']}", inline=False)
+            await interaction.response.send_message(embed=stats_embed, ephemeral=True)
+            return
+    @discord.ui.button(label="Deaths", style=discord.ButtonStyle.gray, custom_id="deaths")
+    async def deaths_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        Deaths = get_stats("Deaths")
+        if Deaths == -1:
+            error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        elif Deaths == -2:
+            error_embed = discord.Embed(title="Error", description="Something went wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        else:
+            stats_embed = discord.Embed(title="Top 10 Deaths", description="Tady je top 10 hráčů s nejvíce smrtmi", color=discord.Color.dark_gray())
+            for i in range(len(Deaths)):
+                stats_embed.add_field(name=f"{i+1}. __{Deaths[i]['Username']}__", value=f"**Deaths:** {Deaths[i]['Deaths']}", inline=False)
+            await interaction.response.send_message(embed=stats_embed, ephemeral=True)
+            return
+    @discord.ui.button(label="Time", style=discord.ButtonStyle.green, custom_id="time")
+    async def time_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        Time = get_stats("TotalSeconds")
+        if Time == -1:
+            error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        elif Time == -2:
+            error_embed = discord.Embed(title="Error", description="Something went wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        else:
+            stats_embed = discord.Embed(title="Top 10 Time", description="Tady je top 10 hráčů s nejdelší dobou na serveru", color=discord.Color.green())
+            for i in range(len(Time)):
+                time_in_seconds = Time[i]['TotalSeconds']
+                TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
+                stats_embed.add_field(name=f"{i+1}. __{Time[i]['Username']}__", value=f"**Time:** {TotalTime}", inline=False)
+            await interaction.response.send_message(embed=stats_embed, ephemeral=True)
+            return
+class InteractiveLeaderboard(discord.ui.View):
+    def __init__(self, messageEmbed, pageNumber=1):
+        super().__init__(timeout=600)
+        self.listValue = (pageNumber - 1) * 10
+        self.embed = messageEmbed
+    
+    @discord.ui.button(label="⬅️ Previous", style=discord.ButtonStyle.red)
+    async def previous_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        self.listValue = self.listValue - 10
+        if self.listValue < 0:
+            self.listValue = 0
+            players_list = all_players_list(self.listValue)
+        else:
+            players_list = all_players_list(self.listValue)
+        if players_list == -1:
+            error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        elif players_list == -2:
+            error_embed = discord.Embed(title="Error", description="Something went wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        else:
+            new_embed = discord.Embed(title="All players in one leaderboard", description="Tady jsou všichni hráči na jednom leaderboardu", color=discord.Color.dark_blue())
+            new_embed.set_thumbnail(url=interaction.guild.icon)
+            for i in range(len(players_list)):
+                time_in_seconds = players_list[i]['TotalSeconds']
+                TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
+                new_embed.add_field(name=f"{i+1+self.listValue}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
+            new_embed.set_footer(text=f"Page {self.listValue // 10 + 1}/{get_pages()}")
+            await interaction.response.edit_message(embed=new_embed, view=self)
+    @discord.ui.button(label="Next ➡️", style=discord.ButtonStyle.red)
+    async def next_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        self.listValue = self.listValue + 10
+        if (self.listValue // 10) > (get_pages() - 1):
+            self.listValue = self.listValue - 10
+            players_list = all_players_list(self.listValue)
+        else:
+            players_list = all_players_list(self.listValue)
+        if players_list == -1:
+            error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        elif players_list == -2:
+            error_embed = discord.Embed(title="Error", description="Something went wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        else:
+            new_embed = discord.Embed(title="All players in one leaderboard", description="Tady jsou všichni hráči na jednom leaderboardu", color=discord.Color.dark_blue())
+            new_embed.set_thumbnail(url=interaction.guild.icon)
+            for i in range(len(players_list)):
+                time_in_seconds = players_list[i]['TotalSeconds']
+                TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
+                new_embed.add_field(name=f"{i+1+self.listValue}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
+            new_embed.set_footer(text=f"Page {self.listValue // 10 + 1}/{get_pages()}")
+            await interaction.response.edit_message(embed=new_embed, view=self)
+
 
 # Discord bot settings and intents
 try:
@@ -419,6 +634,56 @@ async def removevip(ctx, id="-1"):
         console_log(f"{ctx.author.name} has tried to remove VIP from user {id}, but doesn't have permission!", "info")
         error_embed = discord.Embed(title="Error!", description="You don't have permission to use this command!", color=0xff0000)
         await ctx.send(embed=error_embed)
+@FuncBot.hybrid_command(description="Shows the stats of the user")
+async def stats(ctx, user="-1"):
+    if user == "-1":
+        no_argument_embed = discord.Embed(title="Error", description="You need to specify a steamID or steam name", color=0xff0000)
+        no_argument_embed.add_field(name="Example", value=f"**65433444@steam** or **Kaktus1549**", inline=False)
+        await ctx.send(embed=no_argument_embed)
+        return
+    steam_id, steam_name, SCP_kills, Human_kills, Deaths, time_in_seconds = user_stats(user)
+    if steam_id == -1:
+        settings_error = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+        await ctx.send(embed=settings_error)
+        return
+    elif steam_id == -2:
+        user_not_found = discord.Embed(title="Error", description=f"I didn't find any match for **{user}**, maybe you misspelled it?", color=0xff0000)
+        await ctx.send(embed=user_not_found)
+        return
+    total_time = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
+    result_embed = discord.Embed(title=f"Steam name: {steam_name}", description=f"SteamID: {steam_id}", color=discord.Color.dark_blue())
+    result_embed.add_field(name="Počet zabitých SCP:", value=f"{SCP_kills}", inline=False)
+    result_embed.add_field(name="Počet zabitých hráčů:", value=f"{Human_kills}", inline=False)
+    result_embed.add_field(name="Počet smrtí:", value=f"{Deaths}", inline=False)
+    result_embed.add_field(name="Nahraný čas:", value=f"{total_time}", inline=False)
+    await ctx.send(embed=result_embed)
+@FuncBot.hybrid_command(description="Shows the leaderboard of the server")
+async def scpleaderboard(ctx, page=1):
+    if page > get_pages():
+        page = get_pages()
+    elif page < 1:
+        page = 1
+    leader_embed = discord.Embed(title="All players in one leaderboard", description="Tady jsou všichni hráči na jednom leaderboardu", color=discord.Color.dark_blue())
+    leader_embed.set_thumbnail(url=ctx.guild.icon)
+    players_list = all_players_list((page - 1) * 10)
+    if players_list == -1:
+        settings_error = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+        await ctx.send(embed=settings_error)
+        return
+    elif players_list == -2:
+        user_not_found = discord.Embed(title="Error", description=f"There was something wrong while getting the stats, please contact the administrator", color=0xff0000)
+        await ctx.send(embed=user_not_found)
+        return
+    else:
+        for i in range(len(players_list)):
+            time_in_seconds = players_list[i]['TotalSeconds']
+            TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
+            leader_embed.add_field(name=f"{(page - 1) * 10 + i + 1}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
+        leader_embed.set_footer(text=f"Page {page}/{get_pages()}")
+        await ctx.send(embed=leader_embed, view=InteractiveLeaderboard(leader_embed, page))
+
+# Discord bot events
+
 
 
 if settings['discord_settings']['token'] == "TOKEN":

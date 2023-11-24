@@ -118,3 +118,83 @@ match = re.match(pattern, steamid)
 - Loads VIPs and then checks if discordID or steamID is already present in VIPs
 - If yes, removes it and saves VIPs
 - Returns 0 if everything went fine, 1 if there was error and 2 if user was not found
+
+
+## Leaderboard
+
+Leaderboard section has multiple functions. Here is list and description of them:
+
+### user_stats(user)
+
+- As input takes SteamID or steam name
+- Loads stats from file specified in config.json
+- Checks if user is present in stats
+- Returns:
+    - -1 if stats file was not found
+    - -2 if user was not found
+    - UserID, Username, SCPKills, HumanKills, Deaths, TotalSeconds if user was found
+    ```python
+        UserID = user_statistics['UserID']
+        Username = user_statistics['Username']
+        SCPKills = user_statistics['SCPKills']
+        HumanKills = user_statistics['HumanKills']
+        Deaths = user_statistics['Deaths']
+        TotalSeconds = user_statistics['TotalSeconds']
+        return UserID, Username, SCPKills, HumanKills, Deaths, TotalSeconds
+    ```
+
+### get_stats(type)
+
+- As input takes type of stats (SCP, Human, Deaths, Playtime)
+- Loads stats from file specified in config.json
+- Returns:
+    - -1 if stats file was not found
+    - -2 if type was not found
+    - TOP 10 players in that category
+    ```python
+        top_10 = sorted_statistics[:10]
+        return top_10
+    ```
+
+### all_players_list(index)
+
+- As input takes index of page
+- Loads stats from file specified in config.json and sorts them by total score
+- Then it splits them into pages (10 players per page)
+- Returns:
+    - -1 if stats file was not found
+    - -2 if stats file is empty
+    - array called return_list with 10 players on page
+
+### get_pages()
+
+- As input takes nothing
+- Loads stats from file specified in config.json 
+- Calculates how many pages are there
+- Returns:
+    - -1 if stats file was not found
+    - -2 if stats file is empty
+    - number of pages
+
+### discord.ui
+
+There are also classes for buttons, basically there is main board in channel with buttons, in this class is specified button text and what it does. Example:
+```python  
+@discord.ui.button(label="SCP Kills", style=discord.ButtonStyle.red, custom_id="scp")
+    async def scp_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
+        SCPKills = get_stats("SCPKills")
+        if SCPKills == -1:
+            error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        elif SCPKills == -2:
+            error_embed = discord.Embed(title="Error", description="Something went wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+            return
+        else:
+            stats_embed = discord.Embed(title="Top 10 SCP Kills", description="Tady je top 10 hráčů s nejvíce zabitymi SCP", color=0xff0000)
+            for i in range(len(SCPKills)):
+                stats_embed.add_field(name=f"{i+1}. __{SCPKills[i]['Username']}__", value=f"**SCP Kills:** {SCPKills[i]['SCPKills']}", inline=False)
+            await interaction.response.send_message(embed=stats_embed, ephemeral=True)
+            return
+```
