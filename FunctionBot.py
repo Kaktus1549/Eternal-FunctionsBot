@@ -767,19 +767,19 @@ class HelpButtons(discord.ui.View):
         self.help_type = help_type
         self.ctx = ctx
     
-    @discord.ui.button(label="Info help", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="❔ Info help", style=discord.ButtonStyle.red)
     async def info_help_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
         if self.help_type == "info":
             return
         else:
             await interaction.response.edit_message(embed=info_help(self.ctx), view=HelpButtons(info_help(self.ctx), "info", self.ctx))
-    @discord.ui.button(label="Leader help", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="📊 LeaderBoard help", style=discord.ButtonStyle.blurple)
     async def leader_help_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
         if self.help_type == "leader":
             return
         else:
             await interaction.response.edit_message(embed=leader_help(self.ctx), view=HelpButtons(leader_help(self.ctx), "leader", self.ctx))
-    @discord.ui.button(label="VIP help", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="💶 VIP help", style=discord.ButtonStyle.green)
     async def vip_help_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
         if self.help_type == "vip":
             return
@@ -976,7 +976,7 @@ async def scpleaderboard(ctx, page=1):
             leader_embed.add_field(name=f"{(page - 1) * 10 + i + 1}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
         leader_embed.set_footer(text=f"Page {page}/{get_pages()}")
         await ctx.send(embed=leader_embed, view=InteractiveLeaderboard(leader_embed, page))
-@FuncBot.hybrid_command()
+@FuncBot.hybrid_command(description="Sets priority of the department")
 async def priority(ctx, department="-1", priority="-1"):
 
     if not check_roles(ctx.author):
@@ -1002,14 +1002,14 @@ async def priority(ctx, department="-1", priority="-1"):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while setting the priority: {e}", color=discord.Color.red()))
         return
-@FuncBot.hybrid_command()
+@FuncBot.hybrid_command(description="Adds a department")
 async def add_department(ctx, name="-1", color="grey", text="-1", priority="1000"):
     priority = str(priority)
     if not check_roles(ctx.author):
         await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
         return
     if name == "-1" or text == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name and the text!", color=discord.Color.red()))
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the color and the text!", color=discord.Color.red()))
         return
     if priority is not int and priority.isnumeric() == False:
         await ctx.send(embed=discord.Embed(title="Error", description="Priority needs to be a number!", color=discord.Color.red()))
@@ -1027,7 +1027,7 @@ async def add_department(ctx, name="-1", color="grey", text="-1", priority="1000
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the department: {e}", color=discord.Color.red()))
         return
-@FuncBot.hybrid_command()
+@FuncBot.hybrid_command(description="Removes a department")
 async def remove_department(ctx, name="-1"):
     if not check_roles(ctx.author):
         await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
@@ -1049,7 +1049,7 @@ async def remove_department(ctx, name="-1"):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the department: {e}", color=discord.Color.red()))
         return
-@FuncBot.hybrid_command()
+@FuncBot.hybrid_command(description="Updates a department")
 async def update_department(ctx, name="-1", color="-1", text="-1"):
     if not check_roles(ctx.author):
         await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
@@ -1074,7 +1074,7 @@ async def update_department(ctx, name="-1", color="-1", text="-1"):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the department: {e}", color=discord.Color.red()))
         return
-@FuncBot.hybrid_command()
+@FuncBot.hybrid_command(description="Adds a section")
 async def add_section(ctx, department="-1", name="-1", role="-1"):
     if not check_roles(ctx.author):
         await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
@@ -1096,7 +1096,7 @@ async def add_section(ctx, department="-1", name="-1", role="-1"):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the section: {e}", color=discord.Color.red()))
         return
-@FuncBot.hybrid_command()
+@FuncBot.hybrid_command(description="Removes a section")
 async def remove_section(ctx, department="-1", name="-1"):
     if not check_roles(ctx.author):
         await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
@@ -1118,7 +1118,7 @@ async def remove_section(ctx, department="-1", name="-1"):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the section: {e}", color=discord.Color.red()))
         return
-@FuncBot.hybrid_command()
+@FuncBot.hybrid_command(description="Updates a section")
 async def update_section(ctx, department="-1", name="-1", role="-1"):
     if not check_roles(ctx.author):
         await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
