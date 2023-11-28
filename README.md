@@ -7,18 +7,18 @@ This is documentation for Eternal Gaming Function Bot. This bot is used for mana
 If config.json is not found, bot will create one with default values:
 ```json
 {
-    "discord_settings":{
+    "discord_settings": {
         "token": "TOKEN",
         "prefix": "#",
         "sync": "772112186927480832"
     },
-    "vip_settings":{
+    "vip_settings": {
         "remove": "772112186927480832",
-        "json":{
-            "file": "PATH/TO/VIP.JSON"
+        "json": {
+            "file": "./config/vips.json"
         },
         "roles": {
-            "kontributor": "ROLE_ID",
+            "kontributor": "1151412247155965952",
             "donator": "ROLE_ID",
             "sponzor": "ROLE_ID",
             "booster": "ROLEID",
@@ -26,29 +26,30 @@ If config.json is not found, bot will create one with default values:
             "investor": "ROLEID"
         }
     },
-    "leader_settings":{
-        "channel":{
-            "main_board_channel_id":"NONE",
-            "main_board_message":"Default text",
-            "main_board_message_limit":150
+    "leader_settings": {
+        "channel": {
+            "enabled": "true",
+            "main_board_channel_id": "1140700941889310850",
+            "main_board_message": "Default text",
+            "main_board_message_limit": 150
         },
-        "stats":{
-            "stats_file":"PATH/TO/STATS.JSON",
+        "stats": {
+            "stats_file": "./config/PlayerData.json",
             "encoding": "utf-8"
         }
     },
-    "info_settings":{
-        "bot":{
-            "embed_channel_id":"NONE",
+    "info_settings": {
+        "bot": {
+            "enabled": "true",
+            "embed_channel_id": "976221389734440981",
             "embed_text": "EDIT_THIS",
             "message_limit": 150,
-            "allowed_roles":[
-                "ROLE_ID",
-                "ANOTHER_ID"
+            "allowed_roles": [
+                "978277386091102218"
             ]
         },
-        "hiearchy":{
-            "file":"PATH/TO/HIEARCHY.JSON",
+        "hiearchy": {
+            "file": "./config/hiearchy.json",
             "encoding": "utf-8"
         }
     }
@@ -240,6 +241,7 @@ There are also classes for buttons, basically there is main board in channel wit
 - If message is not found, he creates new one
 - If message is found and its from bot, he edits it
 - If message is found and its not from bot or there are multiple messages, he deletes them and creates new one
+- Can be disabled in config.json by setting "enabled" to false
 
 ## Info
 
@@ -302,3 +304,4 @@ async def button_callback(self, interaction: discord.Interaction):
 - If message is not found, he creates new one
 - If message is found and its from bot, he edits it
 - If message is found and its not from bot or there are multiple messages, he deletes them and creates new one
+- Can be disabled in config.json by setting "enabled" to false

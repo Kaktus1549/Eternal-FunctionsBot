@@ -20,6 +20,7 @@
     },
     "leader_settings": {
         "channel": {
+            "enabled": "true",
             "main_board_channel_id": "1140700941889310850",
             "main_board_message": "Default text",
             "main_board_message_limit": 150
@@ -31,6 +32,7 @@
     },
     "info_settings": {
         "bot": {
+            "enabled": "true",
             "embed_channel_id": "976221389734440981",
             "embed_text": "EDIT_THIS",
             "message_limit": 150,

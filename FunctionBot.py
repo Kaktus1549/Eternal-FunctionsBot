@@ -107,6 +107,7 @@ def create_config():
     },
     "leader_settings":{
         "channel":{
+            "enable": "true",
             "main_board_channel_id":"NONE",
             "main_board_message":"Default text",
             "main_board_message_limit":150
@@ -118,6 +119,7 @@ def create_config():
     },
     "info_settings":{
         "bot":{
+            "enable": "true",
             "embed_channel_id":"NONE",
             "embed_text": "EDIT_THIS",
             "message_limit": 150,
@@ -1144,8 +1146,14 @@ async def update_section(ctx, department="-1", name="-1", role="-1"):
 # Discord bot events
 @FuncBot.event
 async def on_ready():
-    await info_on_ready()
-    await leader_on_ready()
+    if settings['info_settings']['bot']['enabled'] == "true":
+        await info_on_ready()
+    else:
+        console_log("Info module is disabled!", "info")
+    if settings['leaderboard_settings']['bot']['enabled'] == "true":
+        await leader_on_ready()
+    else:
+        console_log("Leaderboard module is disabled!", "info")
     console_log(f"Logged in as {FuncBot.user.name}!", "info")
     console_log("Bot is ready!", "info")
 
