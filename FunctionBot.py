@@ -1150,7 +1150,7 @@ async def on_ready():
         await info_on_ready()
     else:
         console_log("Info module is disabled!", "info")
-    if settings['leader_settings']['bot']['enabled'] == "true":
+    if settings['leader_settings']['channel']['enabled'] == "true":
         await leader_on_ready()
     else:
         console_log("Leaderboard module is disabled!", "info")
