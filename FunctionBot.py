@@ -149,6 +149,8 @@ def open_config():
     except Exception as e:
         console_log(f"There was an error while opening the config file: {e}", "error")
         exit()
+
+# VIP functions
 def load_vips():
     # 1 = error
     # 2 = json file is empty
@@ -269,6 +271,8 @@ def user_remove(id):
                 json.dump(data, json_file, indent=4)
             return 0
     return 2
+
+# Leader functions
 def user_stats(user):
     # -1 means that stats file is not specified in config
     # -2 means that user is not found in stats file
@@ -353,6 +357,8 @@ def get_pages():
     if len(statistics) % 10 != 0:
         pages = pages + 1
     return pages
+
+# Info functions
 def open_hiearchy():
     try:
         with open(settings['info_settings']['hiearchy']['file'], "r", encoding=settings['info_settings']['hiearchy']['encoding']) as hiearchy_file:
