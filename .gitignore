@@ -161,3 +161,4 @@ cython_debug/
 mess/
 .git/
 logs/
+config/config.json.old

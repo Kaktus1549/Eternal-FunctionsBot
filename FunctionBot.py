@@ -71,6 +71,9 @@ logger.addHandler(console_handler)
 discord_logger = logging.getLogger('discord')
 discord_logger.addHandler(console_handler)
 
+# variables
+connection = None
+
 # Functions for bot
 def get_current_time():
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -86,18 +89,25 @@ def console_log(message, status):
         logger.debug(message)
 def create_config():
     config = {
-    "discord_settings":{
+    "discord_settings": {
         "token": "TOKEN",
         "prefix": "#",
         "sync": "772112186927480832"
     },
-    "vip_settings":{
+    "database_settings":{
+        "db_address": "127.0.0.1",
+        "db_port": 3306,
+        "db_user": "test",
+        "db_password": "test",
+        "db_name": "EternalGaming"
+    },
+    "vip_settings": {
         "remove": "772112186927480832",
-        "json":{
-            "file": "PATH/TO/VIP.JSON"
+        "json": {
+            "file": "./config/vips.json"
         },
         "roles": {
-            "kontributor": "ROLE_ID",
+            "kontributor": "1151412247155965952",
             "donator": "ROLE_ID",
             "sponzor": "ROLE_ID",
             "booster": "ROLEID",
@@ -105,35 +115,36 @@ def create_config():
             "investor": "ROLEID"
         }
     },
-    "leader_settings":{
-        "channel":{
-            "enable": "true",
-            "main_board_channel_id":"NONE",
-            "main_board_message":"Default text",
-            "main_board_message_limit":150
+    "leader_settings": {
+        "channel": {
+            "enabled": "true",
+            "main_board_channel_id": "1140700941889310850",
+            "main_board_message": "Default text",
+            "main_board_message_limit": 150
         },
-        "stats":{
-            "stats_file":"PATH/TO/STATS.JSON",
-            "encoding": "utf-8"
+        "db": {
+            "table": "PlayerStatistics",
+            "playerTable": "Player"
         }
     },
-    "info_settings":{
-        "bot":{
-            "enable": "true",
-            "embed_channel_id":"NONE",
+    "info_settings": {
+        "bot": {
+            "enabled": "true",
+            "embed_channel_id": "976221389734440981",
             "embed_text": "EDIT_THIS",
             "message_limit": 150,
-            "allowed_roles":[
-                "ROLE_ID",
-                "ANOTHER_ID"
+            "allowed_roles": [
+                "978277386091102218"
             ]
         },
-        "hiearchy":{
-            "file":"PATH/TO/HIEARCHY.JSON",
+        "hiearchy": {
+            "file": "./config/hiearchy.json",
             "encoding": "utf-8"
+            }
         }
     }
-    }
+    if not os.path.exists("./config"):
+        os.mkdir("./config")
     with open('./config/config.json', 'w') as config_file:
         json.dump(config, config_file, indent=4)
 def open_config():
@@ -149,6 +160,27 @@ def open_config():
     except Exception as e:
         console_log(f"There was an error while opening the config file: {e}", "error")
         exit()
+def open_connection():
+    # Status -> 0 = OK, -1 = error
+    global connection
+
+    try:
+        console_log("Connecting to the database...", "info")
+        connection = mysql.connector.connect(host=settings['database_settings']['db_address'], port=settings['database_settings']['db_port'], user=settings['database_settings']['db_user'], password=settings['database_settings']['db_password'], database=settings['database_settings']['db_name'])
+        console_log("Connection successful!", "info")
+    except Error as e:
+        console_log(f"There was an error while connecting to the database: {e}", "error")
+        connection = -1
+def is_steamid(steamid):
+    # Check if steamid is valid by regex
+    # 0 = valid, 1 = invalid
+    
+    pattern = r'^\d+@steam$'
+    match = re.match(pattern, steamid)
+    if match:
+        return 0
+    else:
+        return 1
 
 # VIP functions
 def load_vips():
@@ -169,15 +201,6 @@ def load_vips():
         return 2
     except Exception as e:
         console_log("An error has occured while loading vips! Error: " + str(e), "error")
-        return 1
-def steamid_validation(steamid):
-    # Check if steamid is valid by regex
-    
-    pattern = r'^\d+@steam$'
-    match = re.match(pattern, steamid)
-    if match:
-        return 0
-    else:
         return 1
 def user_check(steamid, discord_id):    
     # False = user doesn't have VIP or has one more to share
@@ -274,95 +297,155 @@ def user_remove(id):
 
 # Leader functions
 def user_stats(user):
-    # -1 means that stats file is not specified in config
-    # -2 means that user is not found in stats file
-    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
-        console_log("You need to specify the activity json file in the config file!", "error")
-        return -1, -1, -1, -1, -1, -1
-    # Open json files and return them
+    # -1 means that there was an error while connecting to the database
+    # -2 means that user is not found in stats
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return -1, -1, -1, -1, -1, -1
+        else:
+            console_log("Reconnection successful!", "info")
+    # Search for user in database
     try:
-        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
-            statistics = json.load(stats_file)
-        user_statistics_filter = filter(lambda item: item['UserID'] == user or item['Username'] == user, statistics)
-        user_statistics = next(user_statistics_filter, None)
-    except FileNotFoundError:
-        console_log("Stats file not found, please check the config file!", "error")
+        cursor = connection.cursor()
+        if is_steamid(user) == 0:
+            # Removes @steam from steamid
+            user = user[:-6]
+            cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['playerTable']} WHERE SteamID = '{user}'")
+            result = cursor.fetchall()
+            if len(result) == 0:
+                return -2, -2, -2, -2, -2, -2
+            else:
+                username = result[0][2]
+                user = result[0][0]
+                cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['table']} WHERE SteamID = '{user}'")
+
+        else:
+            cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['playerTable']} WHERE Username = '{user}'")
+            result = cursor.fetchall()
+            if len(result) == 0:
+                return -2, -2, -2, -2, -2, -2
+            else:
+                username = result[0][2]
+                user = result[0][0]
+                cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['table']} WHERE SteamID = '{user}'")
+        result = cursor.fetchall()
+        if len(result) == 0:
+            return -2, -2, -2, -2, -2, -2
+        else:
+            userID = result[0][0]
+            Humanills = result[0][1]
+            ScpKills = result[0][2]
+            Deaths = result[0][3]
+            TotalSeconds = result[0][4]
+
+            return userID, username, Humanills, ScpKills, Deaths, TotalSeconds
+    except Exception as e:
+        console_log(f"There was an error while getting the stats: {e}", "error")
         return -1, -1, -1, -1, -1, -1
-    if user_statistics == None:
-        return -2, -2, -2, -2, -2, -2
-    else:
-        UserID = user_statistics['UserID']
-        Username = user_statistics['Username']
-        SCPKills = user_statistics['SCPKills']
-        HumanKills = user_statistics['HumanKills']
-        Deaths = user_statistics['Deaths']
-        TotalSeconds = user_statistics['TotalSeconds']
-        return UserID, Username, SCPKills, HumanKills, Deaths, TotalSeconds
 def get_stats(type):
-    # -1 means that stats file is not specified in config
-    # -2 means that stats file is empty
-    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
-        console_log("You need to specify the activity json file in the config file!", "error")
-        return -1
-    # Open json files and return them
+    # -1 means that there was an error while connecting to the database
+    # -2 means that stats are empty
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return -1
+        else:
+            console_log("Reconnection successful!", "info")
+    # Sorts users by type from highest to lowest, then returns top 10
     try:
-        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
-            statistics = json.load(stats_file)
-        sorted_statistics = sorted(statistics, key=lambda k: k[type], reverse=True)
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT {settings['leader_settings']['db']['playerTable']}.Username, {settings['leader_settings']['db']['table']}.{type} FROM {settings['leader_settings']['db']['table']} INNER JOIN {settings['leader_settings']['db']['playerTable']} ON {settings['leader_settings']['db']['table']}.SteamID = {settings['leader_settings']['db']['playerTable']}.SteamID ORDER BY {settings['leader_settings']['db']['table']}.{type} DESC")
+        result = cursor.fetchall()
+        if len(result) == 0:
+            return -2
+        else:
+            return result[:10]
     except FileNotFoundError:
         console_log("Stats file not found, please check the config file!", "error")
-        return -1, -1, -1, -1, -1, -1
-    if sorted_statistics == None:
-        return -2
-    else:
-        top_10 = sorted_statistics[:10]
-        return top_10
+        return -1
 def all_players_list(index):
-    # -1 means that stats file is not specified in config
-    # -2 means that stats file is empty
-    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
-        console_log("You need to specify the activity json file in the config file!", "error")
-        return -1
-    # Open json files and return them
+    # -1 means that there was an error while connecting to the database
+    # -2 means that stats are empty
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return -1
+        else:
+            console_log("Reconnection successful!", "info")
+    # Sorts users by total sum of ScpKills, HumanKills and TotalSeconds from highest to lowest
     try:
-        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
-            statistics = json.load(stats_file)
-        sorted_statistics = sorted(statistics, key=lambda k: k['TotalScore'], reverse=True)
-    except FileNotFoundError:
-        console_log("Stats file not found, please check the config file!", "error")
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT {settings['leader_settings']['db']['playerTable']}.Username, {settings['leader_settings']['db']['table']}.ScpKills, {settings['leader_settings']['db']['table']}.PlayerKills, {settings['leader_settings']['db']['table']}.Deaths , {settings['leader_settings']['db']['table']}.PlayedSeconds FROM {settings['leader_settings']['db']['table']} INNER JOIN {settings['leader_settings']['db']['playerTable']} ON {settings['leader_settings']['db']['table']}.SteamID = {settings['leader_settings']['db']['playerTable']}.SteamID ORDER BY {settings['leader_settings']['db']['table']}.ScpKills + {settings['leader_settings']['db']['table']}.PlayerKills + {settings['leader_settings']['db']['table']}.PlayedSeconds DESC")
+        result = cursor.fetchall()
+        if len(result) == 0:
+            return -2
+        else:
+            return_list = []
+            try:    
+                for i in range(10):
+                    i = i + index
+                    return_list.append(result[i])
+            finally:
+                return return_list
+    except Exception as e:
+        console_log(f"There was an error while getting the stats: {e}", "error")
         return -1
-    if sorted_statistics == None:
-        return -2
-    else:
-        return_list = []
-        try:    
-            for i in range(10):
-                i = i + index
-                return_list.append(sorted_statistics[i])
-        finally:
-            return return_list       
 def get_pages():
-    # -1 means that stats file is not specified in config
-    if settings['leader_settings']['stats']['stats_file'] == "PATH/TO/STATS.JSON":
-        console_log("You need to specify the activity json file in the config file!", "error")
-        return -1
-    # Open json files and return them
+    # -1 means that there was an error while connecting to the database
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return -1
+        else:
+            console_log("Reconnection successful!", "info")
+    # Open stats and count pages
     try:
-        with open(settings['leader_settings']['stats']['stats_file'], "r", encoding=settings['leader_settings']['stats']['encoding']) as stats_file:
-            statistics = json.load(stats_file)
-        pages = len(statistics) // 10
-    except FileNotFoundError:
-        console_log("Stats file not found, please check the config file!", "error")
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT COUNT(*) FROM {settings['leader_settings']['db']['table']}")
+        result = cursor.fetchall()
+        pages = result[0][0] // 10
+        
+        return pages
+    except Exception as e:
+        console_log(f"There was an error while getting the stats: {e}", "error")
         return -1
-    if len(statistics) % 10 != 0:
-        pages = pages + 1
-    return pages
 
 # Info functions
+def create_hiearchy():
+    path = settings['info_settings']['hiearchy']['file']
+    # Checks if folder exists
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+    # Creates hiearchy file
+    hiearchy = {}
+    with open(path, "w", encoding=settings['info_settings']['hiearchy']['encoding']) as hiearchy_file:
+        json.dump(hiearchy, hiearchy_file, indent=4)
 def open_hiearchy():
     try:
         with open(settings['info_settings']['hiearchy']['file'], "r", encoding=settings['info_settings']['hiearchy']['encoding']) as hiearchy_file:
             return json.load(hiearchy_file)
+    except FileNotFoundError:
+        if not os.path.exists(settings['info_settings']['hiearchy']['file']):
+            console_log("Hiearchy file not found! Creating one...", "warning")
+            create_hiearchy()
+            console_log("Hiearchy file created! Please fill it out and restart the bot.", "warning")
+            exit()
+        hiearchy={}
+        with open(settings['info_settings']['hiearchy']['file'], "w", encoding=settings['info_settings']['hiearchy']['encoding']) as hiearchy_file:
+            json.dump(hiearchy, hiearchy_file, indent=4)
     except Exception as e:
         console_log(f"There was an error while opening the hiearchy file: {e}", "error")
         return -1
@@ -617,7 +700,13 @@ try:
 except Exception as e:
     console_log(f"There was an error while importing bot config: {e}", "error")
     exit()
-
+console_log("Importing MySQL...", "info")
+try:
+        import mysql
+        from mysql.connector import Error
+except Exception as e:
+    console_log(f"There was an error while importing mysql connector: {e}", "error")
+    exit()
 
 # discord.ui
 class LeaderButtons(discord.ui.View):
@@ -626,7 +715,7 @@ class LeaderButtons(discord.ui.View):
     
     @discord.ui.button(label="SCP Kills", style=discord.ButtonStyle.red, custom_id="scp")
     async def scp_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
-        SCPKills = get_stats("SCPKills")
+        SCPKills = get_stats("ScpKills")
         if SCPKills == -1:
             error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
             await interaction.response.send_message(embed=error_embed, ephemeral=True)
@@ -638,12 +727,12 @@ class LeaderButtons(discord.ui.View):
         else:
             stats_embed = discord.Embed(title="Top 10 SCP Kills", description="Tady je top 10 hráčů s nejvíce zabitymi SCP", color=0xff0000)
             for i in range(len(SCPKills)):
-                stats_embed.add_field(name=f"{i+1}. __{SCPKills[i]['Username']}__", value=f"**SCP Kills:** {SCPKills[i]['SCPKills']}", inline=False)
+                stats_embed.add_field(name=f"{i+1}. __{SCPKills[i][0]}__", value=f"**SCP Kills:** {SCPKills[i][1]}", inline=False)
             await interaction.response.send_message(embed=stats_embed, ephemeral=True)
             return
     @discord.ui.button(label="Human Kills", style=discord.ButtonStyle.blurple, custom_id="human")
     async def human_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
-        HumanKills = get_stats("HumanKills")
+        HumanKills = get_stats("PlayerKills")
         if HumanKills == -1:
             error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
             await interaction.response.send_message(embed=error_embed, ephemeral=True)
@@ -655,7 +744,7 @@ class LeaderButtons(discord.ui.View):
         else:
             stats_embed = discord.Embed(title="Top 10 Human Kills", description="Tady je top 10 hráčů s nejvíce zabitymi hráči za lidskou roli", color=discord.Color.blurple())
             for i in range(len(HumanKills)):
-                stats_embed.add_field(name=f"{i+1}. __{HumanKills[i]['Username']}__", value=f"**Human Kills:** {HumanKills[i]['HumanKills']}", inline=False)
+                stats_embed.add_field(name=f"{i+1}. __{HumanKills[i][0]}__", value=f"**Human Kills:** {HumanKills[i][1]}", inline=False)
             await interaction.response.send_message(embed=stats_embed, ephemeral=True)
             return
     @discord.ui.button(label="Deaths", style=discord.ButtonStyle.gray, custom_id="deaths")
@@ -670,14 +759,14 @@ class LeaderButtons(discord.ui.View):
             await interaction.response.send_message(embed=error_embed, ephemeral=True)
             return
         else:
-            stats_embed = discord.Embed(title="Top 10 Deaths", description="Tady je top 10 hráčů s nejvíce smrtmi", color=discord.Color.dark_gray())
+            stats_embed = discord.Embed(title="Top 10 Deaths", description="Tady je top 10 hráčů s nejvíce deaths", color=discord.Color.dark_gray())
             for i in range(len(Deaths)):
-                stats_embed.add_field(name=f"{i+1}. __{Deaths[i]['Username']}__", value=f"**Deaths:** {Deaths[i]['Deaths']}", inline=False)
+                stats_embed.add_field(name=f"{i+1}. __{Deaths[i][0]}__", value=f"**Deaths:** {Deaths[i][1]}", inline=False)
             await interaction.response.send_message(embed=stats_embed, ephemeral=True)
             return
     @discord.ui.button(label="Time", style=discord.ButtonStyle.green, custom_id="time")
     async def time_on_click(self, interaction: discord.Interaction, button: discord.ui.button):
-        Time = get_stats("TotalSeconds")
+        Time = get_stats("PlayedSeconds")
         if Time == -1:
             error_embed = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
             await interaction.response.send_message(embed=error_embed, ephemeral=True)
@@ -689,9 +778,9 @@ class LeaderButtons(discord.ui.View):
         else:
             stats_embed = discord.Embed(title="Top 10 Time", description="Tady je top 10 hráčů s nejdelší dobou na serveru", color=discord.Color.green())
             for i in range(len(Time)):
-                time_in_seconds = Time[i]['TotalSeconds']
+                time_in_seconds = Time[i][1]
                 TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
-                stats_embed.add_field(name=f"{i+1}. __{Time[i]['Username']}__", value=f"**Time:** {TotalTime}", inline=False)
+                stats_embed.add_field(name=f"{i+1}. __{Time[i][0]}__", value=f"**Time:** {TotalTime}", inline=False)
             await interaction.response.send_message(embed=stats_embed, ephemeral=True)
             return
 class InteractiveLeaderboard(discord.ui.View):
@@ -720,9 +809,9 @@ class InteractiveLeaderboard(discord.ui.View):
             new_embed = discord.Embed(title="All players in one leaderboard", description="Tady jsou všichni hráči na jednom leaderboardu", color=discord.Color.dark_blue())
             new_embed.set_thumbnail(url=interaction.guild.icon)
             for i in range(len(players_list)):
-                time_in_seconds = players_list[i]['TotalSeconds']
+                time_in_seconds = players_list[i][4]
                 TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
-                new_embed.add_field(name=f"{i+1+self.listValue}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
+                new_embed.add_field(name=f"{i+1+self.listValue}. __{players_list[i][0]}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i][3]}\nPočet zabitých SCP: {players_list[i][1]} <======> Počet zabitých hráčů: {players_list[i][2]}", inline=False)
             new_embed.set_footer(text=f"Page {self.listValue // 10 + 1}/{get_pages()}")
             await interaction.response.edit_message(embed=new_embed, view=self)
     @discord.ui.button(label="Next ➡️", style=discord.ButtonStyle.red)
@@ -745,9 +834,9 @@ class InteractiveLeaderboard(discord.ui.View):
             new_embed = discord.Embed(title="All players in one leaderboard", description="Tady jsou všichni hráči na jednom leaderboardu", color=discord.Color.dark_blue())
             new_embed.set_thumbnail(url=interaction.guild.icon)
             for i in range(len(players_list)):
-                time_in_seconds = players_list[i]['TotalSeconds']
+                time_in_seconds = players_list[i][4]
                 TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
-                new_embed.add_field(name=f"{i+1+self.listValue}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
+                new_embed.add_field(name=f"{i+1+self.listValue}. __{players_list[i][0]}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i][3]}\nPočet zabitých SCP: {players_list[i][1]} <======> Počet zabitých hráčů: {players_list[i][2]}", inline=False)
             new_embed.set_footer(text=f"Page {self.listValue // 10 + 1}/{get_pages()}")
             await interaction.response.edit_message(embed=new_embed, view=self)
 class InfoButtons(discord.ui.View):
@@ -833,10 +922,12 @@ async def sync(ctx):
         await ctx.send("Syncing slash commands with discord...")
         await FuncBot.tree.sync()
         await ctx.send("Sync tree was runned sucessfully!")
+
+# VIP
 @FuncBot.hybrid_command(name="vipactivate", description="Activates VIP on SCP:SL, if user has VIP role on discord server")
 async def vipactivate(ctx, steam_id="-1"):
     steamid = steam_id
-    if steamid == "-1" or steamid_validation(steamid) == 1:
+    if steamid == "-1" or is_steamid(steamid) == 1:
         invalid_id_embed = discord.Embed(title="Invalid SteamID!", description="Please provide valid SteamID!", color=0xff0000)
         invalid_id_embed.add_field(name="SteamID example", value="12345678901234567@steam", inline=False)
         await ctx.send(embed=invalid_id_embed)
@@ -937,6 +1028,8 @@ async def removevip(ctx, id="-1"):
         console_log(f"{ctx.author.name} has tried to remove VIP from user {id}, but doesn't have permission!", "info")
         error_embed = discord.Embed(title="Error!", description="You don't have permission to use this command!", color=0xff0000)
         await ctx.send(embed=error_embed)
+
+# Leaderboard
 @FuncBot.hybrid_command(description="Shows the stats of the user")
 async def stats(ctx, user="-1"):
     if user == "-1":
@@ -950,7 +1043,7 @@ async def stats(ctx, user="-1"):
         await ctx.send(embed=settings_error)
         return
     elif steam_id == -2:
-        user_not_found = discord.Embed(title="Error", description=f"I didn't find any match for **{user}**, maybe you misspelled it?", color=0xff0000)
+        user_not_found = discord.Embed(title="Error", description=f"I didn't find any match for **{user}**, maybe you misspelled it? If you are entering steamID, do not forget to add **@steam** at the end!", color=0xff0000)
         await ctx.send(embed=user_not_found)
         return
     total_time = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
@@ -979,11 +1072,13 @@ async def scpleaderboard(ctx, page=1):
         return
     else:
         for i in range(len(players_list)):
-            time_in_seconds = players_list[i]['TotalSeconds']
+            time_in_seconds = players_list[i][4]
             TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
-            leader_embed.add_field(name=f"{(page - 1) * 10 + i + 1}. __{players_list[i]['Username']}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i]['Deaths']}\nPočet zabitých SCP: {players_list[i]['SCPKills']} <======> Počet zabitých hráčů: {players_list[i]['HumanKills']}", inline=False)
+            leader_embed.add_field(name=f"{(page - 1) * 10 + i + 1}. __{players_list[i][0]}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i][3]}\nPočet zabitých SCP: {players_list[i][1]} <======> Počet zabitých hráčů: {players_list[i][2]}", inline=False)
         leader_embed.set_footer(text=f"Page {page}/{get_pages()}")
         await ctx.send(embed=leader_embed, view=InteractiveLeaderboard(leader_embed, page))
+
+# Info
 @FuncBot.hybrid_command(description="Sets priority of the department")
 async def priority(ctx, department="-1", priority="-1"):
 
@@ -1152,6 +1247,7 @@ async def update_section(ctx, department="-1", name="-1", role="-1"):
 # Discord bot events
 @FuncBot.event
 async def on_ready():
+    open_connection()
     if settings['info_settings']['bot']['enabled'] == "true":
         await info_on_ready()
     else:

@@ -4,6 +4,13 @@
         "prefix": "#",
         "sync": "772112186927480832"
     },
+    "database_settings":{
+        "db_address": "DB.ADDRESS.COM",
+        "db_port": 3306,
+        "db_user": "USER",
+        "db_password": "Pa22worD",
+        "db_name": "DBname"
+    },
     "vip_settings": {
         "remove": "772112186927480832",
         "json": {
@@ -25,9 +32,9 @@
             "main_board_message": "Default text",
             "main_board_message_limit": 150
         },
-        "stats": {
-            "stats_file": "./config/PlayerData.json",
-            "encoding": "utf-8"
+        "db": {
+            "table": "PlayerStatistics",
+            "playerTable": "Player"
         }
     },
     "info_settings": {
