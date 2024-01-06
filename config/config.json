@@ -17,12 +17,17 @@
             "file": "./config/vips.json"
         },
         "roles": {
-            "kontributor": "1151412247155965952",
+            "kontributor": "ROLE_ID",
             "donator": "ROLE_ID",
             "sponzor": "ROLE_ID",
             "booster": "ROLEID",
             "podporovatel": "ROLEID",
             "investor": "ROLEID"
+        },
+        "db":{
+            "table": "Vip",
+            "rankTable": "GameRank",
+            "playerTable": "Player"
         }
     },
     "leader_settings": {

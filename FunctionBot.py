@@ -73,6 +73,7 @@ discord_logger.addHandler(console_handler)
 
 # variables
 connection = None
+vips = None
 
 # Functions for bot
 def get_current_time():
@@ -113,6 +114,11 @@ def create_config():
             "booster": "ROLEID",
             "podporovatel": "ROLEID",
             "investor": "ROLEID"
+        },
+        "db":{
+            "table": "Vip",
+            "rankTable": "GameRank",
+            "playerTable": "Player"
         }
     },
     "leader_settings": {
@@ -185,12 +191,12 @@ def is_steamid(steamid):
 # VIP functions
 def load_vips():
     # 1 = error
-    # 2 = json file is empty
+    global vips
     
     try:
         with open(settings['vip_settings']['json']['file'], 'r') as json_file:
             data = json.load(json_file)
-        return data
+            vips = data
     except json.decoder.JSONDecodeError or FileNotFoundError:
         console_log("JSON file is empty or doesn't exist!", "warning")
         # if json file is empty, make empty list
@@ -198,102 +204,163 @@ def load_vips():
         # save empty list to json file
         with open(settings['vip_settings']['json']['file'], 'w') as json_file:
             json.dump(data, json_file, indent=4)
-        return 2
+        vips = data
     except Exception as e:
         console_log("An error has occured while loading vips! Error: " + str(e), "error")
-        return 1
-def user_check(steamid, discord_id):    
+        vips = 1
+def user_check(steamid, discord_id, current_vip):    
     # False = user doesn't have VIP or has one more to share
-    # 1 = discord user has VIP
-    # 2 = steamid has VIP
-    # 3 = error
-
-    # ! before steamid is for david's plugin
-
-    # RoleType:
-    # None = 0,
-    # Supporter = 1,
-    # DiscordBooster = 2,
-    # Contributor = 3,
-    # Donator = 4,
-    # Sponzor = 5
-    # Investor = 6
+    # 1 = means VIP upgrade
+    # 2 = discord user has VIP
+    # 3 = steamid has VIP
+    # 4 = error
     
-    data = load_vips()
-    if data == 1:
-        return 3
-    if data == 2:
-        return False
-    positive = []
-    for user in data:
-        if user['UserId'] == steamid or user['UserId'] == ("!"+steamid):
-            return 2
-        elif str(user['DiscordID']) == str(discord_id):
-            if str(user['RoleType']) == "4" or str(user['RoleType']) == "5":
-                positive.append(user)
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return 3
+        else:
+            console_log("Reconnection successful!", "info") 
+    try:
+        cursor = connection.cursor()
+        # removes @steam from steamid
+        steamid = steamid[:-6]
+        vip = settings['vip_settings']['db']['table']
+        rank = settings['vip_settings']['db']['rankTable']
+        cursor.execute(f"SELECT {vip}.Rank_ID, {vip}.Player_ID, {vip}.Activated_DiscordID, {rank}.Identifier, (SELECT ID FROM {rank} WHERE Identifier = %s) AS SpecificRank_ID FROM {vip} JOIN {rank} ON {vip}.Rank_ID = {rank}.ID WHERE {vip}.Player_ID = %s OR {vip}.Activated_DiscordID = %s", (current_vip, steamid, discord_id))
+        result = cursor.fetchall()
+        if len(result) == 0:
+            return False
+        else:
+            if str(result[0][1]) == str(steamid):
+                return 3
+            # Finds if vip role is allowed to be activated 2 times
+            number_of_activations = 0
+            for i in vips:
+                if i == current_vip:
+                    number_of_activations = vips[i]['number_of_activations']
+                    break
+            # If user role is higher than current vip in database return 1
+            for i in result:
+                if int(i[0]) > int(i[4]) and str(i[1]) == str(steamid):
+                    return 1
+            # If user can have another vip role, return False
+            if len(result) < int(number_of_activations):
+                return False
+            # If user has vip role on discord, return 1
+            elif str(result[0][2]) == str(discord_id):
+                return 2
+            # If user has vip role on steamid, return 2
             else:
-                return 1
-    if len(positive) < 2:
-        return False
-    else:
-        return 1     
+                return False
+    except Exception as e:
+        console_log(f"There was an error while checking the user: {e}", "error")
+        return 4
 def user_add(steamid, discord_id, vip_role):
-    # Example: {"UserId":"!<steamID>", "DiscordID":<DiscordID>, "RoleType":<type>, "VipAdvantageData":{"AvailableAdvantages":{}}, "ExpirationDate":<unix timestamp in seconds>}
-    # RoleType:
-    # None = 0,
-    # Supporter = 1,
-    # DiscordBooster = 2,
-    # Contributor = 3,
-    # Donator = 4,
-    # Sponzor = 5
-    # Investor = 6
     # Status -> 0 = OK, 1 = error
 
-    data = load_vips()
-    if data == 1:
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return 1
+        else:
+            console_log("Reconnection successful!", "info")
+    elif vips == 1:
+        console_log("There was an error while loading vips!", "error")
         return 1
-    # adding user
-    steamid = "!" + steamid
-    unix_timestamp_in_seconds = int((datetime.now() + timedelta(days=30)).timestamp())
-    if vip_role == "podporovatel":
-        role_type = 1
-    elif vip_role == "booster":
-        role_type = 2
-    elif vip_role == "kontributor":
-        role_type = 3
-    elif vip_role == "donator":
-        role_type = 4
-    elif vip_role == "sponzor":
-        role_type = 5
-    elif vip_role == "investor":
-        role_type = 6
-    else:
-        # if no match, print error
-
-        console_log(f"Role {vip_role} is unknown!", "error")
+    try:
+        cursor = connection.cursor()
+        steamid = steamid[:-6]
+        # Checks if steamid exists in Player table
+        cursor.execute(f"SELECT * FROM {settings['vip_settings']['db']['playerTable']} WHERE SteamID = %s", (steamid,))
+        result = cursor.fetchall()
+        if len(result) == 0:
+            # If steamid doesn't exist, add it to Player table
+            cursor.execute(f"INSERT INTO {settings['vip_settings']['db']['playerTable']} (SteamID, DiscordID, Username) VALUES (%s, %s, %s)", (steamid, discord_id, None))
+            connection.commit()
+        vip_db = vips[vip_role]['db_name']
+        ScpSpawn = vips[vip_role]['ScpSpawn']
+        HumanSpawn = vips[vip_role]['HumanSpawn']
+        RespawnWave = vips[vip_role]['RespawnWave']
+        ExplosiveVest = vips[vip_role]['ExplosiveVest']
+        HHG = vips[vip_role]['HHG']
+        Jailbird = vips[vip_role]['Jailbird']
+        cursor.execute(f"INSERT INTO {settings['vip_settings']['db']['table']} (Player_ID, Activated_DiscordID, Rank_ID, ScpSpawn, HumanSpawn, RespawnWave, ExplosiveVest, HHG, Jailbird) VALUES (%s, %s, (SELECT ID FROM {settings['vip_settings']['db']['rankTable']} WHERE Identifier = %s), %s, %s, %s, %s, %s, %s)", (steamid, discord_id, vip_db, ScpSpawn, HumanSpawn, RespawnWave, ExplosiveVest, HHG, Jailbird))
+        connection.commit()
+        return 0
+    except Exception as e:
+        console_log(f"There was an error while adding the user: {e}", "error")
         return 1
-    user = {"UserId":steamid, "DiscordID":discord_id, "RoleType":role_type, "VipAdvantageData":{"AvailableAdvantages":{}}, "ExpirationDate":unix_timestamp_in_seconds}
-    # adding user to json
-    data.append(user)
-    with open(settings['vip_settings']['json']['file'], 'w') as json_file:
-        json.dump(data, json_file, indent=4)
-    return 0
+def user_update(steamid, new_vip_role):
+    # Status -> 0 = OK, 1 = error
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return 1
+        else:
+            console_log("Reconnection successful!", "info")
+    elif vips == 1:
+        console_log("There was an error while loading vips!", "error")
+        return 1
+    try:
+        cursor = connection.cursor()
+        steamid = steamid[:-6]
+        vip_db = vips[new_vip_role]['db_name']
+        ScpSpawn = vips[new_vip_role]['ScpSpawn']
+        HumanSpawn = vips[new_vip_role]['HumanSpawn']
+        RespawnWave = vips[new_vip_role]['RespawnWave']
+        ExplosiveVest = vips[new_vip_role]['ExplosiveVest']
+        HHG = vips[new_vip_role]['HHG']
+        Jailbird = vips[new_vip_role]['Jailbird']
+        cursor.execute(f"UPDATE {settings['vip_settings']['db']['table']} SET Rank_ID = (SELECT ID FROM {settings['vip_settings']['db']['rankTable']} WHERE Identifier = %s), ScpSpawn = %s, HumanSpawn = %s, RespawnWave = %s, ExplosiveVest = %s, HHG = %s, Jailbird = %s WHERE Player_ID = %s", (vip_db, ScpSpawn, HumanSpawn, RespawnWave, ExplosiveVest, HHG, Jailbird, steamid))
+        connection.commit()
+        return 0
+    except Exception as e:
+        console_log(f"There was an error while updating the user: {e}", "error")
+        return 1
 def user_remove(id):
     # id = steamid or discordid
     # Status -> 0 = OK, 1 = error, 2 = user not found
 
-    data = load_vips()
-    if data == 1:
+    if connection == -1:
+        console_log("There was an error while connecting to the database!", "error")
+        console_log("Trying to reconnect...", "warning")
+        open_connection()
+        if connection == -1:
+            console_log("Reconnection failed!", "error")
+            return 1
+        else:
+            console_log("Reconnection successful!", "info")
+    try:
+        # Checks if discordid or steamid is in vip and if it is, removes it
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT * FROM {settings['vip_settings']['db']['table']} WHERE Player_ID = %s OR Activated_DiscordID = %s", (id, id))
+        result = cursor.fetchall()
+        if len(result) == 0:
+            return 2
+        else:
+            if is_steamid(id) == 0:
+                # Removes @steam from steamid
+                id = id[:-6]
+                cursor.execute(f"DELETE FROM {settings['vip_settings']['db']['table']} WHERE Player_ID = %s", (id,))
+                connection.commit()
+                return 0
+            else:
+                cursor.execute(f"DELETE FROM {settings['vip_settings']['db']['table']} WHERE Activated_DiscordID = %s", (id,))
+                connection.commit()
+                return 0
+    except Exception as e:
+        console_log(f"There was an error while removing the user: {e}", "error")
         return 1
-    if data == 2:
-        return 2
-    for user in data:
-        if str(user['DiscordID']) == str(id) or user['UserId'] == str(id) or user['UserId'] == ("!"+str(id)):
-            data.remove(user)
-            with open(settings['vip_settings']['json']['file'], 'w') as json_file:
-                json.dump(data, json_file, indent=4)
-            return 0
-    return 2
 
 # Leader functions
 def user_stats(user):
@@ -314,24 +381,24 @@ def user_stats(user):
         if is_steamid(user) == 0:
             # Removes @steam from steamid
             user = user[:-6]
-            cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['playerTable']} WHERE SteamID = '{user}'")
+            cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['playerTable']} WHERE SteamID = %s", (user,))
             result = cursor.fetchall()
             if len(result) == 0:
                 return -2, -2, -2, -2, -2, -2
             else:
                 username = result[0][2]
                 user = result[0][0]
-                cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['table']} WHERE SteamID = '{user}'")
+                cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['table']} WHERE SteamID = %s", (user,))
 
         else:
-            cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['playerTable']} WHERE Username = '{user}'")
+            cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['playerTable']} WHERE Username = %s", (user,))
             result = cursor.fetchall()
             if len(result) == 0:
                 return -2, -2, -2, -2, -2, -2
             else:
                 username = result[0][2]
                 user = result[0][0]
-                cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['table']} WHERE SteamID = '{user}'")
+                cursor.execute(f"SELECT * FROM {settings['leader_settings']['db']['table']} WHERE SteamID = %s", (user,))
         result = cursor.fetchall()
         if len(result) == 0:
             return -2, -2, -2, -2, -2, -2
@@ -932,31 +999,39 @@ async def vipactivate(ctx, steam_id="-1"):
         invalid_id_embed.add_field(name="SteamID example", value="12345678901234567@steam", inline=False)
         await ctx.send(embed=invalid_id_embed)
         return
-    exists = user_check(steamid, ctx.author.id)
-    if exists == False:
-        user_roles = ctx.author.roles
-        found_role = False
-        for i in settings['vip_settings']['roles']:
-            if found_role == True:
-                break
-            if settings['vip_settings']['roles'][i] == "ROLE_ID":
-                console_log(f"Role {i} has not been set in settings.json!", "error")
-                return_message = "Disocrd bot has not been configured correctly, please contact bot owner!"
-            else:
-                for user_role in user_roles:
-                    if settings['vip_settings']['roles'][i] == str(user_role.id):
-                        vip_status = i
-                        found_role = True
-                        break
-                    else:
-                        found_role = False
-                        return_message = f"VIP role not found for user **{ctx.author.name}**!"
+    
+    return_message = f"Activating VIP for user **{ctx.author.name}**!"
+    return_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
+    return_embed.add_field(name="Status", value="Searching for VIP role...", inline=True)
+    return_embed = await ctx.send(embed=return_embed)
+    console_log(f"{ctx.author.name} has issued command vipactivate", "info")
+
+    user_roles = ctx.author.roles
+    found_role = False
+    for i in settings['vip_settings']['roles']:
         if found_role == True:
-            return_message = f"Activating VIP for user **{ctx.author.name}**!"
-            return_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
-            return_embed = await ctx.send(embed=return_embed)
-            console_log(f"{ctx.author.name} has issued command vipactivate", "info")
-            console_log(f"VIP role: {vip_status}", "info")
+            break
+        if settings['vip_settings']['roles'][i] == "ROLE_ID":
+            console_log(f"Role {i} has not been set in settings.json!", "error")
+            return_message = "Disocrd bot has not been configured correctly, please contact bot owner!"
+        else:
+            for user_role in user_roles:
+                if settings['vip_settings']['roles'][i] == str(user_role.id):
+                    vip_status = i
+                    found_role = True
+                    break
+                else:
+                    found_role = False
+                    return_message = f"VIP role not found for user **{ctx.author.name}**!"
+    if found_role == True:
+        console_log(f"VIP role found: {vip_status}", "info")
+
+        user_check_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
+        user_check_embed.add_field(name="Status", value="Checking if user has VIP activated...", inline=True)
+        return_embed = await return_embed.edit(content=None, embed=user_check_embed)
+
+        exists = user_check(steamid, ctx.author.id, vip_status)
+        if exists == False:
             try:
                 status = user_add(steamid, ctx.author.id, vip_status)
                 if status == 0:
@@ -970,28 +1045,53 @@ async def vipactivate(ctx, steam_id="-1"):
                     error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
                     error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
                     error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
-                    await ctx.send(embed=error_vip_embed)
+                    await return_embed.edit(content=None, embed=error_vip_embed)
             except Exception as error:
-                console_log(f"An error has occured while activating VIP for user {ctx.author.name}! Error: {error}", "error")
-                await ctx.send(f"An error has occured while activating VIP. Try again later or contact bot owner!")
-        else:
-            console_log(f"{ctx.author.name} has issued command vipactivate, but doesn't have any VIP role!", "info")
-            no_vip_embed = discord.Embed(title="VIP activation failed!", description=return_message, color=0xff0000)
-            no_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-            await ctx.send(embed=no_vip_embed)
-    elif exists == 1:
-        error_vip_embed = discord.Embed(title="Error!", description=f"Your discord account **{ctx.author.name}** has already VIP activated!", color=0xff0000)
-        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-        await ctx.send(embed=error_vip_embed)
-    elif exists == 2:
-        error_vip_embed = discord.Embed(title="Error!", description=f"Provided SteamID **{steamid}** has already VIP activated!", color=0xff0000)
-        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-        await ctx.send(embed=error_vip_embed)
-    elif exists == 3:
-        error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
-        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-        error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
-        await ctx.send(embed=error_vip_embed)
+                exception_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                exception_embed.set_thumbnail(url=ctx.author.avatar.url)
+                exception_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                await return_embed.edit(content=None, embed=exception_embed)
+        elif exists == 1:
+            update_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
+            update_embed.add_field(name="Status", value="Found higher VIP role, updating...", inline=True)
+            return_embed = await return_embed.edit(content=None, embed=update_embed)
+            try:
+                status = user_update(steamid, vip_status)
+                if status == 0:
+                    console_log(f"VIP for user {ctx.author.name} has been updated!", "info")
+                    vip_embed = discord.Embed(title="VIP updated!", description=f"VIP has been updated for user {ctx.author.name}!", color=0x00ff00)
+                    vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                    vip_embed.add_field(name="SteamID", value=steamid, inline=True)
+                    vip_embed.add_field(name="VIP role", value=vip_status, inline=True)
+                    return_embed = await return_embed.edit(content=None ,embed=vip_embed)
+                else:
+                    error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                    error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                    error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                    await return_embed.edit(content=None, embed=error_vip_embed)
+            except Exception as error:
+                exception_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                exception_embed.set_thumbnail(url=ctx.author.avatar.url)
+                exception_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                await return_embed.edit(content=None, embed=exception_embed)
+        elif exists == 2:
+            error_vip_embed = discord.Embed(title="Error!", description=f"Your discord account **{ctx.author.name}** has already VIP activated!", color=0xff0000)
+            error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+            await return_embed.edit(content=None, embed=error_vip_embed)
+        elif exists == 3:
+            error_vip_embed = discord.Embed(title="Error!", description=f"Provided SteamID **{steamid}** has already VIP activated!", color=0xff0000)
+            error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+            await return_embed.edit(content=None, embed=error_vip_embed)
+        elif exists == 4:
+            error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+            error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+            error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+            await return_embed.edit(content=None, embed=error_vip_embed)
+    else:
+        console_log(f"{ctx.author.name} has issued command vipactivate, but doesn't have any VIP role!", "info")
+        no_vip_embed = discord.Embed(title="VIP activation failed!", description=return_message, color=0xff0000)
+        no_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+        await ctx.send(embed=no_vip_embed)
 @FuncBot.hybrid_command(name="removevip", description="Only admins can use this command!")
 async def removevip(ctx, id="-1"):
     if id == "-1":
@@ -1244,10 +1344,18 @@ async def update_section(ctx, department="-1", name="-1", role="-1"):
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the section: {e}", color=discord.Color.red()))
         return  
 
+@FuncBot.hybrid_command(description="Shows the info of the server")
+async def test(ctx, id):
+    user_remove(id)
+@FuncBot.hybrid_command(description="Shows the info of the server")
+async def test2(ctx, id, role):
+    user_add(id, ctx.author.id, role)
+
 # Discord bot events
 @FuncBot.event
 async def on_ready():
     open_connection()
+    load_vips()
     if settings['info_settings']['bot']['enabled'] == "true":
         await info_on_ready()
     else:
