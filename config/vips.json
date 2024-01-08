@@ -2,7 +2,7 @@
     "investor":{
         "ScpSpawn":"5",
         "HumanSpawn":"10",
-        "RespawnWave":"6",
+        "WaveRespawn":"6",
         "ExplosiveVest":"1",
         "HHG":"1",
         "Jailbird":"2",
@@ -12,7 +12,7 @@
     "sponzor":{
         "ScpSpawn":"5",
         "HumanSpawn":"10",
-        "RespawnWave":"6",
+        "WaveRespawn":"6",
         "ExplosiveVest":"1",
         "HHG":"1",
         "Jailbird":"2",
@@ -22,7 +22,7 @@
     "donator":{
         "ScpSpawn":"3",
         "HumanSpawn":"6",
-        "RespawnWave":"4",
+        "WaveRespawn":"4",
         "ExplosiveVest":"0",
         "HHG":"0",
         "Jailbird":"1",
@@ -32,7 +32,7 @@
     "kontributor":{
         "ScpSpawn":"1",
         "HumanSpawn":"2",
-        "RespawnWave":"2",
+        "WaveRespawn":"2",
         "ExplosiveVest":"0",
         "HHG":"0",
         "Jailbird":"0",
@@ -42,7 +42,7 @@
     "booster":{
         "ScpSpawn":"0",
         "HumanSpawn":"0",
-        "RespawnWave":"0",
+        "WaveRespawn":"0",
         "ExplosiveVest":"0",
         "HHG":"0",
         "Jailbird":"0",

@@ -287,11 +287,11 @@ def user_add(steamid, discord_id, vip_role):
         vip_db = vips[vip_role]['db_name']
         ScpSpawn = vips[vip_role]['ScpSpawn']
         HumanSpawn = vips[vip_role]['HumanSpawn']
-        RespawnWave = vips[vip_role]['RespawnWave']
+        WaveRespawn = vips[vip_role]['WaveRespawn']
         ExplosiveVest = vips[vip_role]['ExplosiveVest']
         HHG = vips[vip_role]['HHG']
         Jailbird = vips[vip_role]['Jailbird']
-        cursor.execute(f"INSERT INTO {settings['vip_settings']['db']['table']} (Player_ID, Activated_DiscordID, Rank_ID, ScpSpawn, HumanSpawn, RespawnWave, ExplosiveVest, HHG, Jailbird) VALUES (%s, %s, (SELECT ID FROM {settings['vip_settings']['db']['rankTable']} WHERE Identifier = %s), %s, %s, %s, %s, %s, %s)", (steamid, discord_id, vip_db, ScpSpawn, HumanSpawn, RespawnWave, ExplosiveVest, HHG, Jailbird))
+        cursor.execute(f"INSERT INTO {settings['vip_settings']['db']['table']} (Player_ID, Activated_DiscordID, Rank_ID, ScpSpawn, HumanSpawn, WaveRespawn, ExplosiveVest, HHG, Jailbird) VALUES (%s, %s, (SELECT ID FROM {settings['vip_settings']['db']['rankTable']} WHERE Identifier = %s), %s, %s, %s, %s, %s, %s)", (steamid, discord_id, vip_db, ScpSpawn, HumanSpawn, WaveRespawn, ExplosiveVest, HHG, Jailbird))
         connection.commit()
         return 0
     except Exception as e:
@@ -317,11 +317,11 @@ def user_update(steamid, new_vip_role):
         vip_db = vips[new_vip_role]['db_name']
         ScpSpawn = vips[new_vip_role]['ScpSpawn']
         HumanSpawn = vips[new_vip_role]['HumanSpawn']
-        RespawnWave = vips[new_vip_role]['RespawnWave']
+        WaveRespawn = vips[new_vip_role]['WaveRespawn']
         ExplosiveVest = vips[new_vip_role]['ExplosiveVest']
         HHG = vips[new_vip_role]['HHG']
         Jailbird = vips[new_vip_role]['Jailbird']
-        cursor.execute(f"UPDATE {settings['vip_settings']['db']['table']} SET Rank_ID = (SELECT ID FROM {settings['vip_settings']['db']['rankTable']} WHERE Identifier = %s), ScpSpawn = %s, HumanSpawn = %s, RespawnWave = %s, ExplosiveVest = %s, HHG = %s, Jailbird = %s WHERE Player_ID = %s", (vip_db, ScpSpawn, HumanSpawn, RespawnWave, ExplosiveVest, HHG, Jailbird, steamid))
+        cursor.execute(f"UPDATE {settings['vip_settings']['db']['table']} SET Rank_ID = (SELECT ID FROM {settings['vip_settings']['db']['rankTable']} WHERE Identifier = %s), ScpSpawn = %s, HumanSpawn = %s, WaveRespawn = %s, ExplosiveVest = %s, HHG = %s, Jailbird = %s WHERE Player_ID = %s", (vip_db, ScpSpawn, HumanSpawn, WaveRespawn, ExplosiveVest, HHG, Jailbird, steamid))
         connection.commit()
         return 0
     except Exception as e:
