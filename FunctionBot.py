@@ -169,7 +169,7 @@ def open_config():
 def open_connection():
     # Status -> 0 = OK, -1 = error
     global connection
-
+ 
     try:
         console_log("Connecting to the database...", "info")
         connection = mysql.connector.connect(host=settings['database_settings']['db_address'], port=settings['database_settings']['db_port'], user=settings['database_settings']['db_user'], password=settings['database_settings']['db_password'], database=settings['database_settings']['db_name'])
@@ -434,8 +434,9 @@ def get_stats(type):
             return -2
         else:
             return result[:10]
-    except FileNotFoundError:
-        console_log("Stats file not found, please check the config file!", "error")
+    # Except raise OperationalError("MySQL Connection not available.")
+    except mysql.connector.errors.OperationalError:
+        console_log("MySQL Connection not available.", "error")
         return -1
 def all_players_list(index):
     # -1 means that there was an error while connecting to the database
@@ -605,7 +606,7 @@ def check_roles(member):
     return allow
 def info_help(ctx):
     if not check_roles(ctx.author):
-        help_embed = discord.Embed(title="Help", description="My job is to show the members of each department and section in the server!", color=discord.Color.green())
+        help_embed = discord.Embed(title="Help", description="My job is to show the members of each department and section in the server!", color=discord.Color.red())
         help_embed.add_field(name="Info channel", value=f"Channel with the info is here: <#{settings['info_settings']['bot']['embed_channel_id']}>", inline=False)
         try:
             # tryes to get bot avatar
@@ -646,7 +647,7 @@ def leader_help(ctx):
         help_embed.set_thumbnail(url=ctx.guild.icon)
     return help_embed
 def vip_help(ctx):
-    help_embed = discord.Embed(title="VIP bot help", description="Hi, I'm VIP bot! I'm here to activate VIP for users, who have VIP role on discord server!\nWhat are my commands?", color=discord.Color.dark_blue())
+    help_embed = discord.Embed(title="VIP bot help", description="Hi, I'm VIP bot! I'm here to activate VIP for users, who have VIP role on discord server!\nWhat are my commands?", color=discord.Color.green())
     help_embed.add_field(name="Vipactivate command", value="**/vipactivate <steamid>** -> Activates VIP on Eternal Gaming if user has VIP role on discord server", inline=False)
     help_embed.add_field(name="Remove command", value="**/remove <steamid | discordid>** -> Admin command, removes vip from user", inline=False)
     help_embed.add_field(name="Help command", value="**/help** -> Shows this message", inline=False)
