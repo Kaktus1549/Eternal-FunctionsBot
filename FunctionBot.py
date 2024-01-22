@@ -16,6 +16,7 @@ from sys import exit
 import logging
 import os
 import threading
+import inspect
 
 # Logging
 print(f"{COLOR_GREEN}Setting up logging...{COLOR_RESET}")
@@ -111,9 +112,15 @@ def get_current_time():
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return current_datetime
 def console_log(message, status):
+    frame = inspect.currentframe()
+    outer_frame = inspect.getouterframes(frame)
+    caller_frame_record = outer_frame[1]
+    caller_line_no = caller_frame_record.lineno
+    
     if status == "info":
         logger.info(message)
     elif status == "error":
+        message += f" at line {caller_line_no}"
         logger.error(message)
     elif status == "warning":
         logger.warning(message)
@@ -684,7 +691,7 @@ def save_categories():
     except Exception as e:
         console_log(f"There was an error while saving the tickets! Error: {e}", "error")
         return -1
-async def create_ticket(guild, category, user): 
+async def create_ticket(guild, category, user, form_result= None): 
     # Checks if user has opened ticket, if ticket can be created and if there are any categories
     if has_opened_ticket(user.id):
         error_embed = discord.Embed(title="Error", description="You already have an opened ticket!", color=discord.Color.red())
@@ -726,6 +733,13 @@ async def create_ticket(guild, category, user):
         # Creates info embed
         info_embed = discord.Embed(title=f"Ticket-{ticket_id}", description=f"Ticket created by {user.mention}", color=discord.Color.green())
         info_embed.add_field(name=category['name'], value=category['description'], inline=True)
+        if form_result != None:
+            for answer in form_result:
+                if form_result[answer] == None or form_result[answer] == "":
+                    user_answer = "Empty"
+                else:
+                    user_answer = form_result[answer]
+                info_embed.add_field(name=answer, value=f"```{user_answer}```", inline=False)
         info_embed.set_thumbnail(url=user.avatar.url)
         view = TicketSolvingButtons(ticket_id, category)
         await ticket_channel.send(embed=info_embed, view=view)
@@ -851,10 +865,22 @@ async def log_ticket(channel, category, ticket_id):
         messages.reverse()
 
         # get all messages that are not from bot
+        form_log = ""
         for message in messages:
             if message.author != FuncBot.user:
                 log += f"{message.author}: {message.content}\n"
-        
+            # if message is from bot, check if it is embed
+            else:
+                if len(message.embeds) != 0:
+                    # if it is embed, gets all form fields and adds them to log
+                    # first field is always category, so it is not added
+                    for field in message.embeds[0].fields:
+                        # checks if field is not first field
+                        if field.name != category['name']:
+                            value = field.value
+                            # removes ``` from start and end of value
+                            value = value[3:-3]
+                            form_log += f"{field.name}: {value}\n"
         # tryies to log messages to database
         try:
             connection = pool.get_connection()
@@ -864,15 +890,15 @@ async def log_ticket(channel, category, ticket_id):
             connection.commit()
         except mysql.connector.Error as e:
             console_log(f"Got an database error while logging the ticket: {e}", "error")
-            return -1
+            return -1, -1
         except Exception as e:
             console_log(f"There was an error while logging the ticket! Error: {e}", "error")
             return -1
         # returns complete log
-        return log
+        return log, form_log
     except Exception as e:
         console_log(f"There was an error while logging the ticket! Error: {e}", "error")
-        return -1
+        return -1, -1
 async def delete_ticket(interaction, ticket_id, staff, channel, category):
     # Updates database, logs ticket and deletes it
     
@@ -900,7 +926,7 @@ async def delete_ticket(interaction, ticket_id, staff, channel, category):
         await message.edit(embed=embed)
 
         # Logs ticket
-        log = await log_ticket(channel, category, ticket_id)
+        log, form_log = await log_ticket(channel, category, ticket_id)
         if log == -1:
             error_embed = discord.Embed(title="Error", description="There was an error while deleting the ticket! Please try again or contact the administrator!", color=discord.Color.red())
             await message.edit(embed=error_embed)
@@ -910,16 +936,29 @@ async def delete_ticket(interaction, ticket_id, staff, channel, category):
         log_embed = discord.Embed(title=f"Ticket-{ticket_id}", description=f"Ticket created by {user.mention}", color=discord.Color.green())
         log_embed.add_field(name=category['name'], value=category['description'], inline=True)
         # transcript in ``` syntax, so it will be in code block
-        log_embed.add_field(name="Transcript", value=f"```{log}```", inline=False)
+        if form_log != "":
+            log_embed.add_field(name="Form", value=f"```{form_log}```", inline=False)
+        if log != "":
+            log_embed.add_field(name="Transcript", value=f"```{log}```", inline=False)
+        else:
+            log_embed.add_field(name="Transcript", value="No messages were sent in this ticket!", inline=False)
         log_embed.set_thumbnail(url=user.avatar.url)
         # name of staff who closed the ticket, not mention
-        log_embed.set_footer(text=f"Ticket closed by {staff.name}")
+        if staff == False:
+            try:
+                log_embed.set_footer(text=f"Ticket closed by {interaction.user.name}")
+            except Exception as e:
+                log_embed.set_footer(text=f"Can't get name of user who closed the ticket!")
+                console_log(f"Can't get name of user who closed the ticket! Error: {e}", "error")
+        else:
+            log_embed.set_footer(text=f"Ticket closed by {staff.name}")
 
         # sends embed into log channel, to staff who claimed the ticket and to user who created the ticket
         try:
             await FuncBot.get_channel(int(settings['ticket_settings']['logs']['channel_id'])).send(embed=log_embed)
             await user.send(embed=log_embed)
-            await staff.send(embed=log_embed)
+            if staff != False:
+                await staff.send(embed=log_embed)
         except Exception as e:
             console_log(f"There was an error while sending the embed! Error: {e}", "error")
             error_embed = discord.Embed(title="Error", description="There was an error while deleting the ticket! Please try again or contact the administrator!", color=discord.Color.red())
@@ -959,14 +998,16 @@ async def tickets_on_restart():
             messages = await get_first_five_messages(channel)
             for message in messages:
                 if message.author == FuncBot.user and message.embeds:
-                    # Updates embed view
-                    topic = channel.topic.split(" | ")
-                    category = topic[0]
-                    claimed = False
-                    if len(topic) == 2:
-                        claimed = True
-                    view = TicketSolvingButtons(int(channel.name[7:]), categories[category], claimed)
-                    await message.edit(view=view)
+                    # if embed name is Ticket-{number}
+                    if message.embeds[0].title.startswith("Ticket-"):
+                        # Updates embed view
+                        topic = channel.topic.split(" | ")
+                        category = topic[0]
+                        claimed = False
+                        if len(topic) == 2:
+                            claimed = True
+                        view = TicketSolvingButtons(int(channel.name[7:]), categories[category], claimed)
+                        await message.edit(view=view)
         except Exception as e:
             console_log(f"Something went wrong while getting the message! Error: {e}", "error")
             continue
@@ -1155,6 +1196,9 @@ def ticket_help(ctx):
     help_embed = discord.Embed(title="Help", description="Here are all commands of the bot", color=discord.Color.dark_grey())
     help_embed.add_field(name=f"**/addcategory <CategoryName> <CategoryDescription>**", value="Adds a category to the ticket system", inline=False)
     help_embed.add_field(name=f"**/removecategory <CategoryName>**", value="Removes a category from the ticket system", inline=False)
+    help_embed.add_field(name=f"**/add_question <CategoryName> <Question> <Placeholder> <style> <mandatory>**", value="Adds a question to the category, where style has to be either text or shorttext, mandatory has to be either true or false", inline=False)
+    help_embed.add_field(name=f"**/remove_question <CategoryName> <Question>**", value="Removes a question from the category", inline=False)
+    help_embed.add_field(name=f"**/update_question <CategoryName> <Question> <Placeholder> <style> <mandatory>**", value="Updates a question in the category, where style has to be either text or shorttext, mandatory has to be either true or false. If placeholder, style or mandatory is empty, it will not be updated", inline=False)
     help_embed.set_footer(text="Made by Kaktus1549")
     try:
         help_embed.set_thumbnail(url=FuncBot.user.avatar.url)
@@ -1374,6 +1418,32 @@ class HelpButtons(discord.ui.View):
             return
         else:
             await interaction.response.edit_message(embed=ticket_help(self.ctx), view=HelpButtons(ticket_help(self.ctx), "ticket", self.ctx))
+class TicketModal(discord.ui.Modal):
+    def __init__(self, category, guild, user):
+        self.guild = guild
+        self.user = user
+        self.category = category
+        super().__init__(timeout=None, title="Ticket form")
+        i = 0
+        for question in category['modal_questions']:
+            if i >= 5:
+                break
+            mandatory = category['modal_questions'][question]['mandatory']
+            label = category['modal_questions'][question]['label']
+            placeholder = category['modal_questions'][question]['placeholder']
+            style = category['modal_questions'][question]['style']
+            if style == "text":
+                style = discord.TextStyle.long
+            else:
+                style = discord.TextStyle.short
+            self.add_item(discord.ui.TextInput(label=label, placeholder=placeholder, style=style, required=mandatory))
+    async def on_submit(self, interaction: discord.Interaction):
+        form_result = {}
+        for item in self.children:
+            if isinstance(item, discord.ui.TextInput):
+                form_result[item.label] = item.value
+        embed = await create_ticket(self.guild, self.category, self.user, form_result)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 class TicketDropdown(discord.ui.Select):
     def __init__(self, categories, placeholder, informative=True):
         options = []
@@ -1403,8 +1473,8 @@ class TicketDropdown(discord.ui.Select):
                 await interaction.response.edit_message(embed=error_embed)
             else:
                 category = self.values[0]
-                embed = await create_ticket(interaction.guild, categories[category], interaction.user)
-                await interaction.response.edit_message(embed=embed, view=None)
+                modal = TicketModal(categories[category], interaction.guild, interaction.user)
+                await interaction.response.send_modal(modal)
 class TicketDropdownView(discord.ui.View):
     def __init__(self, categories, placeholder="Select category", informative=True):
         super().__init__(timeout=None)
@@ -1482,7 +1552,7 @@ class TicketSolvingButtons(discord.ui.View):
             await delete_ticket(interaction, self.ticket_id, self.claimed, interaction.channel, self.category)
         if allowed == False:
             await interaction.response.send_message(embed=discord.Embed(title="Error", description="You are not allowed to close this ticket!", color=discord.Color.red()), ephemeral=True)
-        else:
+        if allowed != True and allowed != False and allowed != -1:
             await interaction.response.send_message(embed=discord.Embed(title="Error", description="Something went wrong while closing the ticket, please contact the administrator!", color=discord.Color.red()), ephemeral=True)
 
 # Discord bot settings and intents
@@ -1978,6 +2048,113 @@ async def update_category(ctx, name="-1", description="-1", roles="-1"):
         await ctx.send(embed=discord.Embed(title="Success", description=f"Category {name} was updated!", color=discord.Color.green()))
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the category: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command(description="Adds question to ticket category")
+async def add_question(ctx, category="-1", question="-1", placeholder="-1", style="text", mandatory="false"):
+    if category == "-1" or question == "-1" or placeholder == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category, question, placeholder, style and mandatory!", color=discord.Color.red()))
+        return
+    user_roles = ctx.author.roles
+    for role in user_roles:
+        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+            admin = True
+            break
+        else:
+            admin = False
+    if admin == False:
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    allowed_styles = ["text", "shorttext"]
+    if style.lower() not in allowed_styles:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"Style needs to be one of these: {allowed_styles}", color=discord.Color.red()))
+        return
+    if mandatory.lower() == "true":
+        mandatory = True
+    elif mandatory.lower() == "false":
+        mandatory = False
+    else:
+        await ctx.send(embed=discord.Embed(title="Error", description="Mandatory needs to be true or false!", color=discord.Color.red()))
+        return
+    try:
+        categories[category]['modal_questions'][question] = {
+            "label": question,
+            "placeholder": placeholder,
+            "style": style.lower(),
+            "mandatory": mandatory
+        }
+        save_categories()
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was added to {category}!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Category not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the question: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command(description="Removes question from ticket category")
+async def remove_question(ctx, category="-1", question="-1"):
+    if category == "-1" or question == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category and the question!", color=discord.Color.red()))
+        return
+    user_roles = ctx.author.roles
+    for role in user_roles:
+        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+            admin = True
+            break
+        else:
+            admin = False
+    if admin == False:
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    try:
+        del categories[category]['modal_questions'][question]
+        save_categories()
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was removed from {category}!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Category or question not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the question: {e}", color=discord.Color.red()))
+        return
+@FuncBot.hybrid_command(description="Updates question from ticket category")
+async def update_question(ctx, category="-1", question="-1", placeholder="-1", style="-1", mandatory="-1"):
+    if category == "-1" or question == "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category and the question!", color=discord.Color.red()))
+        return
+    user_roles = ctx.author.roles
+    for role in user_roles:
+        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+            admin = True
+            break
+        else:
+            admin = False
+    if admin == False:
+        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+        return
+    allowed_styles = ["text", "shorttext"]
+    if style.lower() not in allowed_styles and style != "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description=f"Style needs to be one of these: {allowed_styles}", color=discord.Color.red()))
+        return
+    if mandatory.lower() == "true":
+        mandatory = True
+    elif mandatory.lower() == "false":
+        mandatory = False
+    elif mandatory != "-1":
+        await ctx.send(embed=discord.Embed(title="Error", description="Mandatory needs to be true or false!", color=discord.Color.red()))
+        return
+    try:
+        if placeholder != "-1":
+            categories[category]['modal_questions'][question]['placeholder'] = placeholder
+        if style != "-1":
+            categories[category]['modal_questions'][question]['style'] = style.lower()
+        if mandatory != "-1":
+            categories[category]['modal_questions'][question]['mandatory'] = mandatory
+        save_categories()
+        await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was updated in {category}!", color=discord.Color.green()))
+    except KeyError:
+        await ctx.send(embed=discord.Embed(title="Error", description="Category or question not found!", color=discord.Color.red()))
+        return
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the question: {e}", color=discord.Color.red()))
         return
 
 # Discord bot events

@@ -2,17 +2,44 @@
     "Nahlaseni AT clena": {
         "name": "Nahlaseni AT clena",
         "description": "Pokud AT clen udela admin abuse bude to velky spatny :/",
-        "emoji": "thumbsup",
         "allowed_roles": [
             "1198695564666220554"
-        ]
+        ],
+        "modal_questions": {
+            "otazka1": {
+                "label": "Koho nahlasujes",
+                "placeholder": "Napiste jmeno AT clena",
+                "style": "text",
+                "mandatory": true
+            },
+            "otazka2": {
+                "label": "Proc ho nahlasujes?",
+                "placeholder": "Napiste duvod",
+                "style": "text",
+                "mandatory": false
+            }
+        }
     },
     "SCP:SL": {
-        "name": "Haha funni text haha xddd pls kill me",
-        "description": "ll",
+        "name": "SCP:SL",
+        "description": "Testing",
         "allowed_roles": [
             "978277386091102218",
             "1151412247155965952"
-        ]
+        ],
+        "modal_questions": {
+            "otazka1": {
+                "label": "otazka1",
+                "placeholder": "Arctic",
+                "style": "text",
+                "mandatory": true
+            },
+            "otazka2": {
+                "label": "otazka2",
+                "placeholder": "Monkes",
+                "style": "text",
+                "mandatory": true
+            }
+        }
     }
 }
