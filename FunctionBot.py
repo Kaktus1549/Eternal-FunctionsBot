@@ -1194,8 +1194,8 @@ def vip_help(ctx):
     return help_embed
 def ticket_help(ctx):
     help_embed = discord.Embed(title="Help", description="Here are all commands of the bot", color=discord.Color.dark_grey())
-    help_embed.add_field(name=f"**/addcategory <CategoryName> <CategoryDescription>**", value="Adds a category to the ticket system", inline=False)
-    help_embed.add_field(name=f"**/removecategory <CategoryName>**", value="Removes a category from the ticket system", inline=False)
+    help_embed.add_field(name=f"**/addcategory <CategoryName> <CategoryDescription> <roles>**", value="Adds a category to the ticket system, where roles are roles that are allowed to see the ticket", inline=False)
+    help_embed.add_field(name=f"**/updatecategory <CategoryName> <CategoryDescription> <roles>**", value="Updates a category in the ticket system, where roles are roles that are allowed to see the ticket. If roles is empty, it will not be updated", inline=False)
     help_embed.add_field(name=f"**/add_question <CategoryName> <Question> <Placeholder> <style> <mandatory>**", value="Adds a question to the category, where style has to be either text or shorttext, mandatory has to be either true or false", inline=False)
     help_embed.add_field(name=f"**/remove_question <CategoryName> <Question>**", value="Removes a question from the category", inline=False)
     help_embed.add_field(name=f"**/update_question <CategoryName> <Question> <Placeholder> <style> <mandatory>**", value="Updates a question in the category, where style has to be either text or shorttext, mandatory has to be either true or false. If placeholder, style or mandatory is empty, it will not be updated", inline=False)
