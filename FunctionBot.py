@@ -17,6 +17,7 @@ import logging
 import os
 import threading
 import inspect
+import io
 
 # Logging
 print(f"{COLOR_GREEN}Setting up logging...{COLOR_RESET}")
@@ -833,7 +834,7 @@ def check_if_allowed_to_claim(category, user_roles):
     except Exception as e:
         console_log(f"There was an error while checking if user is allowed to create a ticket! Error: {e}", "error")
         return -1
-def check_if_allowed_to_delete(interaction_user, claimed_user):
+def check_if_allowed_to_delete(interaction_user, claimed_user, category):
     # False = user is not allowed
     # True = user is allowed
     # -1 = error
@@ -843,13 +844,13 @@ def check_if_allowed_to_delete(interaction_user, claimed_user):
         else:
             roles = interaction_user.roles
             for role in roles:
-                if role.permissions.administrator:
+                if role.permissions.administrator or str(role.id) in category['allowed_roles']:
                     return True
             return False
     except Exception as e:
         console_log(f"There was an error while checking if user is allowed to delete the ticket! Error: {e}", "error")
         return -1
-async def log_ticket(channel, category, ticket_id):
+async def log_ticket(channel, category, ticket_id, connection):
     # log all messages in ticket channel except bot messages
     # returns complete log
     # -1 = error
@@ -883,7 +884,6 @@ async def log_ticket(channel, category, ticket_id):
                             form_log += f"{field.name}: {value}\n"
         # tryies to log messages to database
         try:
-            connection = pool.get_connection()
             cursor = connection.cursor()
             # sets Transcript and category in database
             cursor.execute(f"INSERT INTO {settings['ticket_settings']['logs']['table']} (Ticket_ID, Transcript, Category) VALUES (%s, %s, %s)", (ticket_id, log, category['name']))
@@ -893,7 +893,7 @@ async def log_ticket(channel, category, ticket_id):
             return -1, -1
         except Exception as e:
             console_log(f"There was an error while logging the ticket! Error: {e}", "error")
-            return -1
+            return -1, -1
         # returns complete log
         return log, form_log
     except Exception as e:
@@ -926,7 +926,11 @@ async def delete_ticket(interaction, ticket_id, staff, channel, category):
         await message.edit(embed=embed)
 
         # Logs ticket
-        log, form_log = await log_ticket(channel, category, ticket_id)
+        log, form_log = await log_ticket(channel, category, ticket_id, connection)
+        # closes connection
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
         if log == -1:
             error_embed = discord.Embed(title="Error", description="There was an error while deleting the ticket! Please try again or contact the administrator!", color=discord.Color.red())
             await message.edit(embed=error_embed)
@@ -935,13 +939,16 @@ async def delete_ticket(interaction, ticket_id, staff, channel, category):
         # creates embed where will be: who opened ticket, category with description, transcript and in footer who closed the ticket
         log_embed = discord.Embed(title=f"Ticket-{ticket_id}", description=f"Ticket created by {user.mention}", color=discord.Color.green())
         log_embed.add_field(name=category['name'], value=category['description'], inline=True)
-        # transcript in ``` syntax, so it will be in code block
-        if form_log != "":
-            log_embed.add_field(name="Form", value=f"```{form_log}```", inline=False)
-        if log != "":
-            log_embed.add_field(name="Transcript", value=f"```{log}```", inline=False)
+        # sends two messages, one is info embed and second is transcript file (if transcript is not empty)
+        if log == "":
+            log_embed.add_field(name="Transcript", value="There are no messages in this ticket!", inline=False)
+            file = None
         else:
-            log_embed.add_field(name="Transcript", value="No messages were sent in this ticket!", inline=False)
+            message = ""
+            if form_log != "":
+                message += f"Form:\n\n{form_log}\n ---------------------------- \n"
+            message += f"Transcript:\n\n{log}"
+            file = io.StringIO(message)
         log_embed.set_thumbnail(url=user.avatar.url)
         # name of staff who closed the ticket, not mention
         if staff == False:
@@ -956,9 +963,18 @@ async def delete_ticket(interaction, ticket_id, staff, channel, category):
         # sends embed into log channel, to staff who claimed the ticket and to user who created the ticket
         try:
             await FuncBot.get_channel(int(settings['ticket_settings']['logs']['channel_id'])).send(embed=log_embed)
+            if file != None:
+                await FuncBot.get_channel(int(settings['ticket_settings']['logs']['channel_id'])).send(file=discord.File(file, filename=f"Ticket-{ticket_id}.txt"))
+                file.seek(0)
             await user.send(embed=log_embed)
+            if file != None:
+                await user.send(file=discord.File(file, filename=f"Ticket-{ticket_id}.txt"))
+                file.seek(0)
             if staff != False:
                 await staff.send(embed=log_embed)
+                if file != None:
+                    await staff.send(file=discord.File(file, filename=f"Ticket-{ticket_id}.txt"))
+                    file.seek(0)
         except Exception as e:
             console_log(f"There was an error while sending the embed! Error: {e}", "error")
             error_embed = discord.Embed(title="Error", description="There was an error while deleting the ticket! Please try again or contact the administrator!", color=discord.Color.red())
@@ -1004,8 +1020,11 @@ async def tickets_on_restart():
                         topic = channel.topic.split(" | ")
                         category = topic[0]
                         claimed = False
+                        # topic[1] is "Claimed by: {user mention}"
                         if len(topic) == 2:
-                            claimed = True
+                            # Gets user from topic
+                            claimed = topic[1][14:-1]
+                            claimed = FuncBot.get_user(int(claimed))
                         view = TicketSolvingButtons(int(channel.name[7:]), categories[category], claimed)
                         await message.edit(view=view)
         except Exception as e:
@@ -1519,7 +1538,7 @@ class TicketSolvingButtons(discord.ui.View):
         self.category = category
         self.claimed = claimed
         # Add the "Claim Ticket" button only if the ticket has not been claimed
-        if not self.claimed:
+        if self.claimed == False:
             claim_ticket_button = discord.ui.Button(label="🔧 Claim ticket", style=discord.ButtonStyle.green)
             claim_ticket_button.callback = self.claim_ticket_on_click
             self.add_item(claim_ticket_button)
@@ -1546,7 +1565,7 @@ class TicketSolvingButtons(discord.ui.View):
         else:
             await interaction.response.send_message(embed=discord.Embed(title="Error", description="Something went wrong while claiming the ticket, please contact the administrator!", color=discord.Color.red()), ephemeral=True)
     async def close_ticket_on_click(self, interaction: discord.Interaction):
-        allowed = check_if_allowed_to_delete(interaction.user, self.claimed)
+        allowed = check_if_allowed_to_delete(interaction.user, self.claimed, self.category)
         
         if allowed == True:
             await delete_ticket(interaction, self.ticket_id, self.claimed, interaction.channel, self.category)

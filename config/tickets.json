@@ -1,42 +1,107 @@
 {
-    "Nahlaseni AT clena": {
-        "name": "Nahlaseni AT clena",
-        "description": "Pokud AT clen udela admin abuse bude to velky spatny :/",
+    "SCP:SL Report": {
+        "name": "SCP:SL Report",
+        "description": "Pokud máš stížnost na hráče na našich SCP:SL serverech, můžeš je zde nahlásit.",
         "allowed_roles": [
-            "1198695564666220554"
+            "802927221769633814"
         ],
         "modal_questions": {
-            "otazka1": {
-                "label": "Koho nahlasujes",
-                "placeholder": "Napiste jmeno AT clena",
-                "style": "text",
+            "Steam username": {
+                "label": "Steam username",
+                "placeholder": "Tvoje steam jmeno",
+                "style": "shorttext",
                 "mandatory": true
             },
-            "otazka2": {
-                "label": "Proc ho nahlasujes?",
-                "placeholder": "Napiste duvod",
+            "Server": {
+                "label": "Na jakem serveru se to odehrálo?",
+                "placeholder": "RP/Modded",
+                "style": "shorttext",
+                "mandatory": true
+            },
+            "Reportovany": {
+                "label": "Koho nahlašuješ?",
+                "placeholder": "Napiš jméno hráče",
+                "style": "shorttext",
+                "mandatory": true
+            },
+            "Duvod": {
+                "label": "Proč ho nahlašuješ?",
+                "placeholder": "Napiš důvod",
                 "style": "text",
-                "mandatory": false
+                "mandatory": true
             }
         }
     },
-    "SCP:SL": {
-        "name": "SCP:SL",
-        "description": "Testing",
+    "SCP:SL AT Report": {
+        "name": "SCP:SL AT Report",
+        "description": "Pokud máš stížnost na někoho z Admin Teamu na našich SCP:SL serverech, můžeš je zde nahlásit.",
         "allowed_roles": [
-            "978277386091102218",
-            "1151412247155965952"
+            "1046509380205563935"
         ],
         "modal_questions": {
-            "otazka1": {
-                "label": "otazka1",
-                "placeholder": "Arctic",
+            "Jmeno admina": {
+                "label": "Jméno admina",
+                "placeholder": "Napiš jméno admina",
+                "style": "shorttext",
+                "mandatory": true
+            },
+            "duvod": {
+                "label": "Proč ho nahlašuješ?",
+                "placeholder": "Napiš důvod",
+                "style": "text",
+                "mandatory": true
+            }
+        }
+    },
+    "SCP:SL Unban Request":{
+        "name": "SCP:SL Unban Request",
+        "description": "Pokud chceš požádat o unban na našich SCP:SL serverech, můžeš to zde udělat.",
+        "allowed_roles": [
+            "802927221769633814"
+        ],
+        "modal_questions": {
+            "Steam username": {
+                "label": "Steam username",
+                "placeholder": "Tvoje steam jmeno",
+                "style": "shorttext",
+                "mandatory": true
+            },
+            "Duvod": {
+                "label": "Za co jsi dostal ban?",
+                "placeholder": "Napiš důvod",
                 "style": "text",
                 "mandatory": true
             },
-            "otazka2": {
-                "label": "otazka2",
-                "placeholder": "Monkes",
+            "Admin": {
+                "label": "Kdo ti dal ban?",
+                "placeholder": "Napiš jméno admina",
+                "style": "shorttext",
+                "mandatory": true
+            },
+            "Duvod2": {
+                "label": "Proč bys měl být unbanut?",
+                "placeholder": "Napiš důvod",
+                "style": "text",
+                "mandatory": true
+            }
+        }
+    },
+    "Discord support":{
+        "name": "Discord support",
+        "description": "Pokud máte nějaký problém s naším discord serverem nebo s někým na serveru můžete to zde nahlásit.",
+        "allowed_roles": [
+            "954103227354345552"
+        ],
+        "modal_questions": {
+            "Problem": {
+                "label": "S čím máš problém?",
+                "placeholder": "Nazvy svůj problém",
+                "style": "shorttext",
+                "mandatory": true
+            },
+            "Duvod": {
+                "label": "Popiš svůj problém",
+                "placeholder": "Popis problému",
                 "style": "text",
                 "mandatory": true
             }
