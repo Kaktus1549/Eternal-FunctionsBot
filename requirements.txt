@@ -1,3 +1,4 @@
 discord.py
 pyinstaller
 mysql-connector-python
+python-dotenv

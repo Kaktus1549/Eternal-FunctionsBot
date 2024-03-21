@@ -18,6 +18,9 @@ import os
 import threading
 import inspect
 import io
+from os import getenv
+from dotenv import load_dotenv
+load_dotenv()
 
 # Logging
 print(f"{COLOR_GREEN}Setting up logging...{COLOR_RESET}")
@@ -128,33 +131,70 @@ def console_log(message, status):
     else:
         logger.debug(message)
 def create_config():
+    token = getenv("BOT_TOKEN")
+    prefix = getenv("BOT_PREFIX")
+    sync = getenv("SYNC_ROLE")
+
+    db_address = getenv("DB_ADDRESS")
+    db_user = getenv("DATABASE_USER")
+    db_password = getenv("DATABASE_PASSWORD")
+    pool_size = getenv("POOL_SIZE")
+
+    VIP_ENABLED = getenv("VIP_ENABLED")
+    KONTRIBUTOR = getenv("KONTRIBUTOR")
+    DONATOR = getenv("DONATOR")
+    SPONZOR = getenv("SPONZOR")
+    BOOSTER = getenv("BOOSTER")
+    PODPOROVATEL = getenv("PODPOROVATEL")
+    INVESTOR = getenv("INVESTOR")
+
+    LEADERBOARD_ENABLED = getenv("LEADERBOARD_ENABLED")
+    LEADERBOARD_CHANNEL = getenv("LEADERBOARD_CHANNEL")
+    DEFAULT_LEADERBOARD_TEXT = getenv("DEFAULT_LEADERBOARD_TEXT")
+    MESSAGE_LIMIT = getenv("MESSAGE_LIMIT")
+
+    INFO_ENABLED = getenv("INFO_ENABLED")
+    INFO_CHANNEL = getenv("INFO_CHANNEL")
+    INFO_MESSAGE = getenv("INFO_MESSAGE")
+    INFO_LIMIT = getenv("INFO_LIMIT")
+    INFO_ROLES = getenv("INFO_ROLES").split(", ")
+
+    TICKETS_ENABLED = getenv("TICKETS_ENABLED")
+    TICKETS_CHANNEL = getenv("TICKETS_CHANNEL")
+    TICKETS_CATEGORY = getenv("TICKETS_CATEGORY")
+    TICKETS_MESSAGE = getenv("TICKETS_MESSAGE")
+    TICKETS_LOG_CHANNEL = getenv("TICKETS_LOG_CHANNEL")
+    TICKETS_LIMIT = getenv("TICKETS_LIMIT")
+    TICKETS_ROLES = getenv("TICKETS_ROLES").split(", ")
+
     config = {
     "discord_settings": {
-        "token": "TOKEN",
-        "prefix": "#",
-        "sync": "772112186927480832"
+        "token": token,
+        "prefix": prefix,
+        "sync": sync
     },
     "database_settings":{
-        "db_address": "127.0.0.1",
+        "db_address": db_address,
         "db_port": 3306,
-        "pool_size": 20,
+        "pool_size": int(pool_size),
         "reconnect": True,
-        "db_user": "test",
-        "db_password": "test",
+        "db_user": db_user,
+        "db_password": db_password,
         "db_name": "EternalGaming"
     },
     "vip_settings": {
+        "enabled": VIP_ENABLED,
         "remove": "772112186927480832",
         "json": {
             "file": "./config/vips.json"
         },
         "roles": {
-            "kontributor": "1151412247155965952",
-            "donator": "ROLE_ID",
-            "sponzor": "ROLE_ID",
-            "booster": "ROLEID",
-            "podporovatel": "ROLEID",
-            "investor": "ROLEID"
+            "kontributor": KONTRIBUTOR,
+            "donator": DONATOR,
+            "sponzor": SPONZOR,
+            "booster": BOOSTER,
+            "podporovatel": PODPOROVATEL,
+            "investor": INVESTOR
         },
         "db":{
             "table": "Vip",
@@ -164,10 +204,10 @@ def create_config():
     },
     "leader_settings": {
         "channel": {
-            "enabled": "true",
-            "main_board_channel_id": "1140700941889310850",
-            "main_board_message": "Default text",
-            "main_board_message_limit": 150
+            "enabled": LEADERBOARD_ENABLED,
+            "main_board_channel_id": LEADERBOARD_CHANNEL,
+            "main_board_message": DEFAULT_LEADERBOARD_TEXT,
+            "main_board_message_limit": MESSAGE_LIMIT
         },
         "db": {
             "table": "PlayerStatistics",
@@ -176,13 +216,11 @@ def create_config():
     },
     "info_settings": {
         "bot": {
-            "enabled": "true",
-            "embed_channel_id": "976221389734440981",
-            "embed_text": "EDIT_THIS",
-            "message_limit": 150,
-            "allowed_roles": [
-                "978277386091102218"
-            ]
+            "enabled": INFO_ENABLED,
+            "embed_channel_id": INFO_CHANNEL,
+            "embed_text": INFO_MESSAGE,
+            "message_limit": INFO_LIMIT,
+            "allowed_roles": INFO_ROLES
         },
         "hiearchy": {
             "file": "./config/hiearchy.json",
@@ -191,22 +229,20 @@ def create_config():
         },
         "ticket_settings":{
             "channel":{
-                "enabled": "true",
-                "ticket_channel_id": "1196426153280413706",
-                "ticket_message": "Create a ticket",
-                "ticket_message_limit": 150,
-                "allowed_roles": [
-                    "978277386091102218"
-                ]
+                "enabled": TICKETS_ENABLED,
+                "ticket_channel_id": TICKETS_CHANNEL,
+                "ticket_message": TICKETS_MESSAGE,
+                "ticket_message_limit": TICKETS_LIMIT,
+                "allowed_roles": TICKETS_ROLES
             },
             "tickets":{
                 "file": "./config/tickets.json",
                 "encoding": "utf-8",
-                "category_id": "1196748950745653338",
+                "category_id": TICKETS_CATEGORY,
                 "ticket_table": "discord_tickets"
             },
             "logs":{
-                "channel_id":"978276447909199902",
+                "channel_id":TICKETS_LOG_CHANNEL,
                 "message_limit": "None",
                 "table": "discord_tickets_logs",
                 "enabled": "true"
@@ -271,8 +307,16 @@ def load_vips():
         with open(settings['vip_settings']['json']['file'], 'r') as json_file:
             data = json.load(json_file)
             vips = data
-    except json.decoder.JSONDecodeError or FileNotFoundError:
-        console_log("JSON file is empty or doesn't exist!", "warning")
+    except json.decoder.JSONDecodeError:
+        console_log("JSON file is empty!", "warning")
+        # if json file is empty, make empty list
+        data = []
+        # save empty list to json file
+        with open(settings['vip_settings']['json']['file'], 'w') as json_file:
+            json.dump(data, json_file, indent=4)
+        vips = data
+    except FileNotFoundError:
+        console_log("JSON file not found!", "warning")
         # if json file is empty, make empty list
         data = []
         # save empty list to json file
@@ -1159,6 +1203,8 @@ async def ticket_on_ready():
     await tickets_on_restart()
 # Help functions
 def info_help(ctx):
+    if settings['info_settings']['bot']['enabled'] != "true":
+        return discord.Embed(title="Error", description="Info section is not enabled in the config file!", color=discord.Color.red())
     if not check_roles(ctx.author):
         help_embed = discord.Embed(title="Help", description="My job is to show the members of each department and section in the server!", color=discord.Color.red())
         help_embed.add_field(name="Info channel", value=f"Channel with the info is here: <#{settings['info_settings']['bot']['embed_channel_id']}>", inline=False)
@@ -1189,6 +1235,8 @@ def info_help(ctx):
     help_embed.set_footer(text="Made by Kaktus1549")
     return help_embed
 def leader_help(ctx):
+    if settings['leader_settings']['channel']['enabled'] != "true":
+        return discord.Embed(title="Error", description="Leaderboard section is not enabled in the config file!", color=discord.Color.dark_blue())
     help_embed = discord.Embed(title="Help", description="Here are all commands of the bot", color=discord.Color.dark_blue())
     help_embed.add_field(name=f"**/stats <SteamID/Username>**", value="Shows the stats of the user -> Example: **/stats 76561198119241234@steam** or **/stats Kaktus1549**", inline=False)
     help_embed.add_field(name=f"**/scpleaderboard <PageNumber>**", value="Shows the leaderboard of the server", inline=False)
@@ -1201,6 +1249,8 @@ def leader_help(ctx):
         help_embed.set_thumbnail(url=ctx.guild.icon)
     return help_embed
 def vip_help(ctx):
+    if settings['vip_settings']['enabled'] != "true":
+        return discord.Embed(title="Error", description="VIP section is not enabled in the config file!", color=discord.Color.green())
     help_embed = discord.Embed(title="VIP bot help", description="Hi, I'm VIP bot! I'm here to activate VIP for users, who have VIP role on discord server!\nWhat are my commands?", color=discord.Color.green())
     help_embed.add_field(name="Vipactivate command", value="**/vipactivate <steamid>** -> Activates VIP on Eternal Gaming if user has VIP role on discord server", inline=False)
     help_embed.add_field(name="Remove command", value="**/remove <steamid | discordid>** -> Admin command, removes vip from user", inline=False)
@@ -1212,6 +1262,8 @@ def vip_help(ctx):
     help_embed.set_footer(text="Made by Kaktus1549")
     return help_embed
 def ticket_help(ctx):
+    if settings['ticket_settings']['channel']['enabled'] != "true":
+        return discord.Embed(title="Error", description="Ticket section is not enabled in the config file!", color=discord.Color.red())
     help_embed = discord.Embed(title="Help", description="Here are all commands of the bot", color=discord.Color.dark_grey())
     help_embed.add_field(name=f"**/addcategory <CategoryName> <CategoryDescription> <roles>**", value="Adds a category to the ticket system, where roles are roles that are allowed to see the ticket", inline=False)
     help_embed.add_field(name=f"**/updatecategory <CategoryName> <CategoryDescription> <roles>**", value="Updates a category in the ticket system, where roles are roles that are allowed to see the ticket. If roles is empty, it will not be updated", inline=False)
@@ -1615,566 +1667,570 @@ async def sync(ctx):
         await ctx.send("Sync tree was runned sucessfully!")
 
 # VIP
-@FuncBot.hybrid_command(name="vipactivate", description="Activates VIP on SCP:SL, if user has VIP role on discord server")
-async def vipactivate(ctx, steam_id="-1"):
-    steamid = steam_id
-    if steamid == "-1" or is_steamid(steamid) == 1:
-        invalid_id_embed = discord.Embed(title="Invalid SteamID!", description="Please provide valid SteamID!", color=0xff0000)
-        invalid_id_embed.add_field(name="SteamID example", value="12345678901234567@steam", inline=False)
-        await ctx.send(embed=invalid_id_embed)
-        return
-    
-    return_message = f"Activating VIP for user **{ctx.author.name}**!"
-    return_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
-    return_embed.add_field(name="Status", value="Searching for VIP role...", inline=True)
-    return_embed = await ctx.send(embed=return_embed)
-    console_log(f"{ctx.author.name} has issued command vipactivate", "info")
+if settings['vip_settings']['enabled'] == "true":
+    @FuncBot.hybrid_command(name="vipactivate", description="Activates VIP on SCP:SL, if user has VIP role on discord server")
+    async def vipactivate(ctx, steam_id="-1"):
+        steamid = steam_id
+        if steamid == "-1" or is_steamid(steamid) == 1:
+            invalid_id_embed = discord.Embed(title="Invalid SteamID!", description="Please provide valid SteamID!", color=0xff0000)
+            invalid_id_embed.add_field(name="SteamID example", value="12345678901234567@steam", inline=False)
+            await ctx.send(embed=invalid_id_embed)
+            return
+        
+        return_message = f"Activating VIP for user **{ctx.author.name}**!"
+        return_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
+        return_embed.add_field(name="Status", value="Searching for VIP role...", inline=True)
+        return_embed = await ctx.send(embed=return_embed)
+        console_log(f"{ctx.author.name} has issued command vipactivate", "info")
 
-    user_roles = ctx.author.roles
-    found_role = False
-    for i in settings['vip_settings']['roles']:
+        user_roles = ctx.author.roles
+        found_role = False
+        for i in settings['vip_settings']['roles']:
+            if found_role == True:
+                break
+            if settings['vip_settings']['roles'][i] == "ROLE_ID":
+                console_log(f"Role {i} has not been set in settings.json!", "error")
+                return_message = "Disocrd bot has not been configured correctly, please contact bot owner!"
+            else:
+                for user_role in user_roles:
+                    if settings['vip_settings']['roles'][i] == str(user_role.id):
+                        vip_status = i
+                        found_role = True
+                        break
+                    else:
+                        found_role = False
+                        return_message = f"VIP role not found for user **{ctx.author.name}**!"
         if found_role == True:
-            break
-        if settings['vip_settings']['roles'][i] == "ROLE_ID":
-            console_log(f"Role {i} has not been set in settings.json!", "error")
-            return_message = "Disocrd bot has not been configured correctly, please contact bot owner!"
-        else:
-            for user_role in user_roles:
-                if settings['vip_settings']['roles'][i] == str(user_role.id):
-                    vip_status = i
-                    found_role = True
-                    break
-                else:
-                    found_role = False
-                    return_message = f"VIP role not found for user **{ctx.author.name}**!"
-    if found_role == True:
-        console_log(f"VIP role found: {vip_status}", "info")
+            console_log(f"VIP role found: {vip_status}", "info")
 
-        user_check_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
-        user_check_embed.add_field(name="Status", value="Checking if user has VIP activated...", inline=True)
-        return_embed = await return_embed.edit(content=None, embed=user_check_embed)
+            user_check_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
+            user_check_embed.add_field(name="Status", value="Checking if user has VIP activated...", inline=True)
+            return_embed = await return_embed.edit(content=None, embed=user_check_embed)
 
-        exists = user_check(steamid, ctx.author.id, vip_status)
-        if exists == False:
-            try:
-                status = user_add(steamid, ctx.author.id, vip_status)
-                if status == 0:
-                    console_log(f"VIP for user {ctx.author.name} has been activated!", "info")
-                    vip_embed = discord.Embed(title="VIP activated!", description=f"VIP has been activated for user {ctx.author.name}!", color=0x00ff00)
-                    vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-                    vip_embed.add_field(name="SteamID", value=steamid, inline=True)
-                    vip_embed.add_field(name="VIP role", value=vip_status, inline=True)
-                    return_embed = await return_embed.edit(content=None ,embed=vip_embed)
-                else:
-                    error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
-                    error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-                    error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
-                    await return_embed.edit(content=None, embed=error_vip_embed)
-            except Exception as error:
-                exception_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
-                exception_embed.set_thumbnail(url=ctx.author.avatar.url)
-                exception_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
-                await return_embed.edit(content=None, embed=exception_embed)
-        elif exists == 1:
-            update_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
-            update_embed.add_field(name="Status", value="Found higher VIP role, updating...", inline=True)
-            return_embed = await return_embed.edit(content=None, embed=update_embed)
-            try:
-                status = user_update(steamid, vip_status)
-                if status == 0:
-                    console_log(f"VIP for user {ctx.author.name} has been updated!", "info")
-                    vip_embed = discord.Embed(title="VIP updated!", description=f"VIP has been updated for user {ctx.author.name}!", color=0x00ff00)
-                    vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-                    vip_embed.add_field(name="SteamID", value=steamid, inline=True)
-                    vip_embed.add_field(name="VIP role", value=vip_status, inline=True)
-                    return_embed = await return_embed.edit(content=None ,embed=vip_embed)
-                else:
-                    error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
-                    error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-                    error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
-                    await return_embed.edit(content=None, embed=error_vip_embed)
-            except Exception as error:
-                exception_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
-                exception_embed.set_thumbnail(url=ctx.author.avatar.url)
-                exception_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
-                await return_embed.edit(content=None, embed=exception_embed)
-        elif exists == 2:
-            error_vip_embed = discord.Embed(title="Error!", description=f"Your discord account **{ctx.author.name}** has already VIP activated!", color=0xff0000)
-            error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-            await return_embed.edit(content=None, embed=error_vip_embed)
-        elif exists == 3:
-            error_vip_embed = discord.Embed(title="Error!", description=f"Provided SteamID **{steamid}** has already VIP activated!", color=0xff0000)
-            error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-            await return_embed.edit(content=None, embed=error_vip_embed)
-        elif exists == 4:
-            error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
-            error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-            error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
-            await return_embed.edit(content=None, embed=error_vip_embed)
-    else:
-        console_log(f"{ctx.author.name} has issued command vipactivate, but doesn't have any VIP role!", "info")
-        no_vip_embed = discord.Embed(title="VIP activation failed!", description=return_message, color=0xff0000)
-        no_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
-        await ctx.send(embed=no_vip_embed)
-@FuncBot.hybrid_command(name="removevip", description="Removes VIP from user")
-async def removevip(ctx, id="-1"):
-    if id == "-1":
-        invalid_id_embed = discord.Embed(title="Invalid ID!", description="Please provide valid SteamID or DiscordID!", color=0xff0000)
-        await ctx.send(embed=invalid_id_embed)
-        return
-    allowed_users = settings['vip_settings']['remove'].split(', ')
-    for user in allowed_users:
-        if user == str(ctx.author.id):
-            has_admin = True
-            break
+            exists = user_check(steamid, ctx.author.id, vip_status)
+            if exists == False:
+                try:
+                    status = user_add(steamid, ctx.author.id, vip_status)
+                    if status == 0:
+                        console_log(f"VIP for user {ctx.author.name} has been activated!", "info")
+                        vip_embed = discord.Embed(title="VIP activated!", description=f"VIP has been activated for user {ctx.author.name}!", color=0x00ff00)
+                        vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                        vip_embed.add_field(name="SteamID", value=steamid, inline=True)
+                        vip_embed.add_field(name="VIP role", value=vip_status, inline=True)
+                        return_embed = await return_embed.edit(content=None ,embed=vip_embed)
+                    else:
+                        error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                        error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                        await return_embed.edit(content=None, embed=error_vip_embed)
+                except Exception as error:
+                    exception_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                    exception_embed.set_thumbnail(url=ctx.author.avatar.url)
+                    exception_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                    await return_embed.edit(content=None, embed=exception_embed)
+            elif exists == 1:
+                update_embed = discord.Embed(title="VIP in progress!", description=return_message, color=discord.Color.dark_grey())
+                update_embed.add_field(name="Status", value="Found higher VIP role, updating...", inline=True)
+                return_embed = await return_embed.edit(content=None, embed=update_embed)
+                try:
+                    status = user_update(steamid, vip_status)
+                    if status == 0:
+                        console_log(f"VIP for user {ctx.author.name} has been updated!", "info")
+                        vip_embed = discord.Embed(title="VIP updated!", description=f"VIP has been updated for user {ctx.author.name}!", color=0x00ff00)
+                        vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                        vip_embed.add_field(name="SteamID", value=steamid, inline=True)
+                        vip_embed.add_field(name="VIP role", value=vip_status, inline=True)
+                        return_embed = await return_embed.edit(content=None ,embed=vip_embed)
+                    else:
+                        error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                        error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                        error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                        await return_embed.edit(content=None, embed=error_vip_embed)
+                except Exception as error:
+                    exception_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                    exception_embed.set_thumbnail(url=ctx.author.avatar.url)
+                    exception_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                    await return_embed.edit(content=None, embed=exception_embed)
+            elif exists == 2:
+                error_vip_embed = discord.Embed(title="Error!", description=f"Your discord account **{ctx.author.name}** has already VIP activated!", color=0xff0000)
+                error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                await return_embed.edit(content=None, embed=error_vip_embed)
+            elif exists == 3:
+                error_vip_embed = discord.Embed(title="Error!", description=f"Provided SteamID **{steamid}** has already VIP activated!", color=0xff0000)
+                error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                await return_embed.edit(content=None, embed=error_vip_embed)
+            elif exists == 4:
+                error_vip_embed = discord.Embed(title="Error!", description=f"An error has occured while activating VIP for user {ctx.author.name}!", color=0xff0000)
+                error_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+                error_vip_embed.add_field(name="Something went wrong!", value="Try again later or contact bot owner!", inline=True)
+                await return_embed.edit(content=None, embed=error_vip_embed)
         else:
-            has_admin = False
+            console_log(f"{ctx.author.name} has issued command vipactivate, but doesn't have any VIP role!", "info")
+            no_vip_embed = discord.Embed(title="VIP activation failed!", description=return_message, color=0xff0000)
+            no_vip_embed.set_thumbnail(url=ctx.author.avatar.url)
+            await ctx.send(embed=no_vip_embed)
+    @FuncBot.hybrid_command(name="removevip", description="Removes VIP from user")
+    async def removevip(ctx, id="-1"):
+        if id == "-1":
+            invalid_id_embed = discord.Embed(title="Invalid ID!", description="Please provide valid SteamID or DiscordID!", color=0xff0000)
+            await ctx.send(embed=invalid_id_embed)
+            return
+        allowed_users = settings['vip_settings']['remove'].split(', ')
+        for user in allowed_users:
+            if user == str(ctx.author.id):
+                has_admin = True
+                break
+            else:
+                has_admin = False
 
-    if has_admin == True:
-        if id.startswith('<@') and id.endswith('>'):
-            # User mention is provided
-            user_mention = id
-            remove_user_id = user_mention[2:-1] # Removing <@ and > from mention
+        if has_admin == True:
+            if id.startswith('<@') and id.endswith('>'):
+                # User mention is provided
+                user_mention = id
+                remove_user_id = user_mention[2:-1] # Removing <@ and > from mention
+            else:
+                remove_user_id = id
+            remove = user_remove(remove_user_id)
+            if remove == 0:
+                console_log(f"VIP has been removed for id {remove_user_id} by {ctx.author.name}", "info")
+                success_embed = discord.Embed(title="Success!", description=f"VIP has been removed for id **{remove_user_id}**!", color=0x00ff00)
+                await ctx.send(embed=success_embed)
+            elif remove == 2:
+                error_embed = discord.Embed(title="Error!", description=f"Provided ID **{remove_user_id}** has no VIP!", color=0xff0000)
+                await ctx.send(embed=error_embed)
+            elif remove == 1:
+                error_embed = discord.Embed(title="Error!", description=f"An error has occured while removing VIP for id **{remove_user_id}**!", color=0xff0000)
+                await ctx.send(embed=error_embed)
         else:
-            remove_user_id = id
-        remove = user_remove(remove_user_id)
-        if remove == 0:
-            console_log(f"VIP has been removed for id {remove_user_id} by {ctx.author.name}", "info")
-            success_embed = discord.Embed(title="Success!", description=f"VIP has been removed for id **{remove_user_id}**!", color=0x00ff00)
-            await ctx.send(embed=success_embed)
-        elif remove == 2:
-            error_embed = discord.Embed(title="Error!", description=f"Provided ID **{remove_user_id}** has no VIP!", color=0xff0000)
+            console_log(f"{ctx.author.name} has tried to remove VIP from user {id}, but doesn't have permission!", "info")
+            error_embed = discord.Embed(title="Error!", description="You don't have permission to use this command!", color=0xff0000)
             await ctx.send(embed=error_embed)
-        elif remove == 1:
-            error_embed = discord.Embed(title="Error!", description=f"An error has occured while removing VIP for id **{remove_user_id}**!", color=0xff0000)
-            await ctx.send(embed=error_embed)
-    else:
-        console_log(f"{ctx.author.name} has tried to remove VIP from user {id}, but doesn't have permission!", "info")
-        error_embed = discord.Embed(title="Error!", description="You don't have permission to use this command!", color=0xff0000)
-        await ctx.send(embed=error_embed)
 
 # Leaderboard
-@FuncBot.hybrid_command(description="Shows the statistics of user on our server")
-async def stats(ctx, user="-1"):
-    if user == "-1":
-        no_argument_embed = discord.Embed(title="Error", description="You need to specify a steamID or steam name", color=0xff0000)
-        no_argument_embed.add_field(name="Example", value=f"**65433444@steam** or **Kaktus1549**", inline=False)
-        await ctx.send(embed=no_argument_embed)
-        return
-    steam_id, steam_name, SCP_kills, Human_kills, Deaths, time_in_seconds = user_stats(user)
-    if steam_id == -1:
-        settings_error = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
-        await ctx.send(embed=settings_error)
-        return
-    elif steam_id == -2:
-        user_not_found = discord.Embed(title="Error", description=f"I didn't find any match for **{user}**, maybe you misspelled it? If you are entering steamID, do not forget to add **@steam** at the end!", color=0xff0000)
-        await ctx.send(embed=user_not_found)
-        return
-    total_time = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
-    result_embed = discord.Embed(title=f"Steam name: {steam_name}", description=f"SteamID: {steam_id}", color=discord.Color.dark_blue())
-    result_embed.add_field(name="Počet zabitých SCP:", value=f"{SCP_kills}", inline=False)
-    result_embed.add_field(name="Počet zabitých hráčů:", value=f"{Human_kills}", inline=False)
-    result_embed.add_field(name="Počet smrtí:", value=f"{Deaths}", inline=False)
-    result_embed.add_field(name="Nahraný čas:", value=f"{total_time}", inline=False)
-    await ctx.send(embed=result_embed)
-@FuncBot.hybrid_command(description="Shows the complete leaderboard of our server")
-async def scpleaderboard(ctx, page=1):
-    if page > get_pages():
-        page = get_pages()
-    elif page < 1:
-        page = 1
-    leader_embed = discord.Embed(title="All players in one leaderboard", description="Tady jsou všichni hráči na jednom leaderboardu", color=discord.Color.dark_blue())
-    leader_embed.set_thumbnail(url=ctx.guild.icon)
-    players_list = all_players_list((page - 1) * 10)
-    if players_list == -1:
-        settings_error = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
-        await ctx.send(embed=settings_error)
-        return
-    elif players_list == -2:
-        user_not_found = discord.Embed(title="Error", description=f"There was something wrong while getting the stats, please contact the administrator", color=0xff0000)
-        await ctx.send(embed=user_not_found)
-        return
-    else:
-        for i in range(len(players_list)):
-            time_in_seconds = players_list[i][4]
-            TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
-            leader_embed.add_field(name=f"{(page - 1) * 10 + i + 1}. __{players_list[i][0]}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i][3]}\nPočet zabitých SCP: {players_list[i][1]} <======> Počet zabitých hráčů: {players_list[i][2]}", inline=False)
-        leader_embed.set_footer(text=f"Page {page}/{get_pages()}")
-        await ctx.send(embed=leader_embed, view=InteractiveLeaderboard(leader_embed, page))
+if settings['leader_settings']['channel']['enabled'] == "true":
+    @FuncBot.hybrid_command(description="Shows the statistics of user on our server")
+    async def stats(ctx, user="-1"):
+        if user == "-1":
+            no_argument_embed = discord.Embed(title="Error", description="You need to specify a steamID or steam name", color=0xff0000)
+            no_argument_embed.add_field(name="Example", value=f"**65433444@steam** or **Kaktus1549**", inline=False)
+            await ctx.send(embed=no_argument_embed)
+            return
+        steam_id, steam_name, SCP_kills, Human_kills, Deaths, time_in_seconds = user_stats(user)
+        if steam_id == -1:
+            settings_error = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await ctx.send(embed=settings_error)
+            return
+        elif steam_id == -2:
+            user_not_found = discord.Embed(title="Error", description=f"I didn't find any match for **{user}**, maybe you misspelled it? If you are entering steamID, do not forget to add **@steam** at the end!", color=0xff0000)
+            await ctx.send(embed=user_not_found)
+            return
+        total_time = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
+        result_embed = discord.Embed(title=f"Steam name: {steam_name}", description=f"SteamID: {steam_id}", color=discord.Color.dark_blue())
+        result_embed.add_field(name="Počet zabitých SCP:", value=f"{SCP_kills}", inline=False)
+        result_embed.add_field(name="Počet zabitých hráčů:", value=f"{Human_kills}", inline=False)
+        result_embed.add_field(name="Počet smrtí:", value=f"{Deaths}", inline=False)
+        result_embed.add_field(name="Nahraný čas:", value=f"{total_time}", inline=False)
+        await ctx.send(embed=result_embed)
+    @FuncBot.hybrid_command(description="Shows the complete leaderboard of our server")
+    async def scpleaderboard(ctx, page=1):
+        if page > get_pages():
+            page = get_pages()
+        elif page < 1:
+            page = 1
+        leader_embed = discord.Embed(title="All players in one leaderboard", description="Tady jsou všichni hráči na jednom leaderboardu", color=discord.Color.dark_blue())
+        leader_embed.set_thumbnail(url=ctx.guild.icon)
+        players_list = all_players_list((page - 1) * 10)
+        if players_list == -1:
+            settings_error = discord.Embed(title="Error", description="There is something wrong with the config file, please contact the administrator", color=0xff0000)
+            await ctx.send(embed=settings_error)
+            return
+        elif players_list == -2:
+            user_not_found = discord.Embed(title="Error", description=f"There was something wrong while getting the stats, please contact the administrator", color=0xff0000)
+            await ctx.send(embed=user_not_found)
+            return
+        else:
+            for i in range(len(players_list)):
+                time_in_seconds = players_list[i][4]
+                TotalTime = f"{time_in_seconds // 3600}h {time_in_seconds % 3600 // 60}m {time_in_seconds % 3600 % 60}s"
+                leader_embed.add_field(name=f"{(page - 1) * 10 + i + 1}. __{players_list[i][0]}__", value=f"Odehraný čas: {TotalTime} <==> Počet smrtí: {players_list[i][3]}\nPočet zabitých SCP: {players_list[i][1]} <======> Počet zabitých hráčů: {players_list[i][2]}", inline=False)
+            leader_embed.set_footer(text=f"Page {page}/{get_pages()}")
+            await ctx.send(embed=leader_embed, view=InteractiveLeaderboard(leader_embed, page))
 
 # Info
-@FuncBot.hybrid_command(description="Sets priority of the department")
-async def priority(ctx, department="-1", priority="-1"):
+if settings['info_settings']['bot']['enabled'] == "true":
+    @FuncBot.hybrid_command(description="Sets priority of the department")
+    async def priority(ctx, department="-1", priority="-1"):
 
-    if not check_roles(ctx.author):
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    if department == "-1" or priority == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department and the priority!", color=discord.Color.red()))
-        return
-    if priority is not int and priority.isnumeric() == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="Priority needs to be a number!", color=discord.Color.red()))
-        return
-    hiearchy = open_hiearchy()
-    if hiearchy == -1:
-        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
-        return
-    try:
-        hiearchy[department]['settings'][2] = int(priority)
-        save_hiearchy(hiearchy)
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Priority of {department} was set to {priority}!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while setting the priority: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Adds a department")
-async def add_department(ctx, name="-1", color="grey", text="-1", priority="1000"):
-    priority = str(priority)
-    if not check_roles(ctx.author):
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    if name == "-1" or text == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the color and the text!", color=discord.Color.red()))
-        return
-    if priority is not int and priority.isnumeric() == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="Priority needs to be a number!", color=discord.Color.red()))
-        return
-    hiearchy = open_hiearchy()
-    if hiearchy == -1:
-        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
-        return
-    try:
-        hiearchy[name] = {
-            "settings": [color, text, priority]
-        }
-        save_hiearchy(hiearchy)
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was added!", color=discord.Color.green()))
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the department: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Removes a department")
-async def remove_department(ctx, name="-1"):
-    if not check_roles(ctx.author):
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    if name == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name!", color=discord.Color.red()))
-        return
-    hiearchy = open_hiearchy()
-    if hiearchy == -1:
-        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
-        return
-    try:
-        del hiearchy[name]
-        save_hiearchy(hiearchy)
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was removed!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the department: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Updates a department")
-async def update_department(ctx, name="-1", color="-1", text="-1"):
-    if not check_roles(ctx.author):
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    if name == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to tell me the name of the department!", color=discord.Color.red()))
-        return
-    hiearchy = open_hiearchy()
-    if hiearchy == -1:
-        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
-        return
-    try:
-        if color != "-1":
-            hiearchy[name]['settings'][0] = color
-        if text != "-1":
-            hiearchy[name]['settings'][1] = text
-        save_hiearchy(hiearchy)
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was updated!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the department: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Adds a section")
-async def add_section(ctx, department="-1", name="-1", role="-1"):
-    if not check_roles(ctx.author):
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    if department == "-1" or name == "-1" or role == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department, name and role!", color=discord.Color.red()))
-        return
-    hiearchy = open_hiearchy()
-    if hiearchy == -1:
-        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
-        return
-    try:
-        hiearchy[department][name] = role
-        save_hiearchy(hiearchy)
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was added to {department}!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the section: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Removes a section")
-async def remove_section(ctx, department="-1", name="-1"):
-    if not check_roles(ctx.author):
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    if department == "-1" or name == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department and the name!", color=discord.Color.red()))
-        return
-    hiearchy = open_hiearchy()
-    if hiearchy == -1:
-        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
-        return
-    try:
-        del hiearchy[department][name]
-        save_hiearchy(hiearchy)
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was removed from {department}!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Department or section not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the section: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Updates a section")
-async def update_section(ctx, department="-1", name="-1", role="-1"):
-    if not check_roles(ctx.author):
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    if department == "-1" or name == "-1" or role == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department, name and role!", color=discord.Color.red()))
-        return
-    hiearchy = open_hiearchy()
-    if hiearchy == -1:
-        await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
-        return
-    try:
-        hiearchy[department][name] = role
-        save_hiearchy(hiearchy)
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was updated in {department}!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Department or section not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the section: {e}", color=discord.Color.red()))
-        return  
+        if not check_roles(ctx.author):
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        if department == "-1" or priority == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department and the priority!", color=discord.Color.red()))
+            return
+        if priority is not int and priority.isnumeric() == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="Priority needs to be a number!", color=discord.Color.red()))
+            return
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+            return
+        try:
+            hiearchy[department]['settings'][2] = int(priority)
+            save_hiearchy(hiearchy)
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Priority of {department} was set to {priority}!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while setting the priority: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Adds a department")
+    async def add_department(ctx, name="-1", color="grey", text="-1", priority="1000"):
+        priority = str(priority)
+        if not check_roles(ctx.author):
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        if name == "-1" or text == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the color and the text!", color=discord.Color.red()))
+            return
+        if priority is not int and priority.isnumeric() == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="Priority needs to be a number!", color=discord.Color.red()))
+            return
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+            return
+        try:
+            hiearchy[name] = {
+                "settings": [color, text, priority]
+            }
+            save_hiearchy(hiearchy)
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was added!", color=discord.Color.green()))
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the department: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Removes a department")
+    async def remove_department(ctx, name="-1"):
+        if not check_roles(ctx.author):
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        if name == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name!", color=discord.Color.red()))
+            return
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+            return
+        try:
+            del hiearchy[name]
+            save_hiearchy(hiearchy)
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was removed!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the department: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Updates a department")
+    async def update_department(ctx, name="-1", color="-1", text="-1"):
+        if not check_roles(ctx.author):
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        if name == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to tell me the name of the department!", color=discord.Color.red()))
+            return
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+            return
+        try:
+            if color != "-1":
+                hiearchy[name]['settings'][0] = color
+            if text != "-1":
+                hiearchy[name]['settings'][1] = text
+            save_hiearchy(hiearchy)
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Department {name} was updated!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the department: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Adds a section")
+    async def add_section(ctx, department="-1", name="-1", role="-1"):
+        if not check_roles(ctx.author):
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        if department == "-1" or name == "-1" or role == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department, name and role!", color=discord.Color.red()))
+            return
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+            return
+        try:
+            hiearchy[department][name] = role
+            save_hiearchy(hiearchy)
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was added to {department}!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Department not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the section: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Removes a section")
+    async def remove_section(ctx, department="-1", name="-1"):
+        if not check_roles(ctx.author):
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        if department == "-1" or name == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department and the name!", color=discord.Color.red()))
+            return
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+            return
+        try:
+            del hiearchy[department][name]
+            save_hiearchy(hiearchy)
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was removed from {department}!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Department or section not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the section: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Updates a section")
+    async def update_section(ctx, department="-1", name="-1", role="-1"):
+        if not check_roles(ctx.author):
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        if department == "-1" or name == "-1" or role == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the department, name and role!", color=discord.Color.red()))
+            return
+        hiearchy = open_hiearchy()
+        if hiearchy == -1:
+            await ctx.send(embed=discord.Embed(title="Error", description="There was an error while opening the hiearchy file!", color=discord.Color.red()))
+            return
+        try:
+            hiearchy[department][name] = role
+            save_hiearchy(hiearchy)
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Section {name} was updated in {department}!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Department or section not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the section: {e}", color=discord.Color.red()))
+            return  
 
 # Ticket
-@FuncBot.hybrid_command(description="Adds a category for tickets")
-async def add_category(ctx, name="-1", description="-1", roles="-1"):
-    if name == "-1" or description == "-1" or roles == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name, description and roles!", color=discord.Color.red()))
-        return
-    user_roles = ctx.author.roles
-    for role in user_roles:
-        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
-            admin = True
-            break
-        else:
-            admin = False
-    if admin == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    try:
-        input_roles = roles.split(",")
-        roles = []
-        for i in range(len(input_roles)):
-            if input_roles[i].startswith('<@') and input_roles[i].endswith('>'):
-                # Role mention is provided
-                roles.append(input_roles[i][3:-1]) # Removing <@& and > from mention
-            elif input_roles[i].isnumeric() == False:
-                await ctx.send(embed=discord.Embed(title="Error", description="Roles need to be numbers or mentions!", color=discord.Color.red()))
-                return
+if settings['ticket_settings']['channel']['enabled'] == "true":
+    @FuncBot.hybrid_command(description="Adds a category for tickets")
+    async def add_category(ctx, name="-1", description="-1", roles="-1"):
+        if name == "-1" or description == "-1" or roles == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name, description and roles!", color=discord.Color.red()))
+            return
+        user_roles = ctx.author.roles
+        for role in user_roles:
+            if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+                admin = True
+                break
             else:
-                roles.append(int(input_roles[i]))
-        categories[name] = {
-            "description": description,
-            "allowed_roles": roles
-        }
-        save_categories()
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Category {name} was added!", color=discord.Color.green()))
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the category: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Removes a category for tickets")
-async def remove_category(ctx, name="-1"):
-    if name == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name!", color=discord.Color.red()))
-        return
-    user_roles = ctx.author.roles
-    for role in user_roles:
-        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
-            admin = True
-            break
-        else:
-            admin = False
-    if admin == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    try:
-        del categories[name]
-        save_categories()
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Category {name} was removed!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Category not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the category: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Updates a category for tickets")
-async def update_category(ctx, name="-1", description="-1", roles="-1"):
-    if name == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to specify the name!", color=discord.Color.red()))
-    user_roles = ctx.author.roles
-    for role in user_roles:
-        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
-            admin = True
-            break
-        else:
-            admin = False
-    if admin == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    try:
-        if roles != "-1":
-            input_roles = input_roles.split(",")
+                admin = False
+        if admin == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        try:
+            input_roles = roles.split(",")
             roles = []
             for i in range(len(input_roles)):
-                if input_roles[i].isnumeric() == False:
-                    await ctx.send(embed=discord.Embed(title="Error", description="Roles need to be numbers!", color=discord.Color.red()))
+                if input_roles[i].startswith('<@') and input_roles[i].endswith('>'):
+                    # Role mention is provided
+                    roles.append(input_roles[i][3:-1]) # Removing <@& and > from mention
+                elif input_roles[i].isnumeric() == False:
+                    await ctx.send(embed=discord.Embed(title="Error", description="Roles need to be numbers or mentions!", color=discord.Color.red()))
                     return
                 else:
                     roles.append(int(input_roles[i]))
+            categories[name] = {
+                "description": description,
+                "allowed_roles": roles
+            }
+            save_categories()
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Category {name} was added!", color=discord.Color.green()))
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the category: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Removes a category for tickets")
+    async def remove_category(ctx, name="-1"):
+        if name == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the name!", color=discord.Color.red()))
+            return
+        user_roles = ctx.author.roles
+        for role in user_roles:
+            if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+                admin = True
+                break
+            else:
+                admin = False
+        if admin == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        try:
+            del categories[name]
+            save_categories()
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Category {name} was removed!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Category not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the category: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Updates a category for tickets")
+    async def update_category(ctx, name="-1", description="-1", roles="-1"):
+        if name == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to specify the name!", color=discord.Color.red()))
+        user_roles = ctx.author.roles
+        for role in user_roles:
+            if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+                admin = True
+                break
+            else:
+                admin = False
+        if admin == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        try:
+            if roles != "-1":
+                input_roles = input_roles.split(",")
+                roles = []
+                for i in range(len(input_roles)):
+                    if input_roles[i].isnumeric() == False:
+                        await ctx.send(embed=discord.Embed(title="Error", description="Roles need to be numbers!", color=discord.Color.red()))
+                        return
+                    else:
+                        roles.append(int(input_roles[i]))
+            else:
+                roles = categories[name]['allowed_roles']
+            if description == "-1":
+                description = categories[name]['description']
+            categories[name] = {
+                "name": name,
+                "description": description,
+                "allowed_roles": roles
+            }
+            save_categories()
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Category {name} was updated!", color=discord.Color.green()))
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the category: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Adds question to ticket category")
+    async def add_question(ctx, category="-1", question="-1", placeholder="-1", style="text", mandatory="false"):
+        if category == "-1" or question == "-1" or placeholder == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category, question, placeholder, style and mandatory!", color=discord.Color.red()))
+            return
+        user_roles = ctx.author.roles
+        for role in user_roles:
+            if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+                admin = True
+                break
+            else:
+                admin = False
+        if admin == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        allowed_styles = ["text", "shorttext"]
+        if style.lower() not in allowed_styles:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"Style needs to be one of these: {allowed_styles}", color=discord.Color.red()))
+            return
+        if mandatory.lower() == "true":
+            mandatory = True
+        elif mandatory.lower() == "false":
+            mandatory = False
         else:
-            roles = categories[name]['allowed_roles']
-        if description == "-1":
-            description = categories[name]['description']
-        categories[name] = {
-            "name": name,
-            "description": description,
-            "allowed_roles": roles
-        }
-        save_categories()
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Category {name} was updated!", color=discord.Color.green()))
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the category: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Adds question to ticket category")
-async def add_question(ctx, category="-1", question="-1", placeholder="-1", style="text", mandatory="false"):
-    if category == "-1" or question == "-1" or placeholder == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category, question, placeholder, style and mandatory!", color=discord.Color.red()))
-        return
-    user_roles = ctx.author.roles
-    for role in user_roles:
-        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
-            admin = True
-            break
-        else:
-            admin = False
-    if admin == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    allowed_styles = ["text", "shorttext"]
-    if style.lower() not in allowed_styles:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"Style needs to be one of these: {allowed_styles}", color=discord.Color.red()))
-        return
-    if mandatory.lower() == "true":
-        mandatory = True
-    elif mandatory.lower() == "false":
-        mandatory = False
-    else:
-        await ctx.send(embed=discord.Embed(title="Error", description="Mandatory needs to be true or false!", color=discord.Color.red()))
-        return
-    try:
-        categories[category]['modal_questions'][question] = {
-            "label": question,
-            "placeholder": placeholder,
-            "style": style.lower(),
-            "mandatory": mandatory
-        }
-        save_categories()
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was added to {category}!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Category not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the question: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Removes question from ticket category")
-async def remove_question(ctx, category="-1", question="-1"):
-    if category == "-1" or question == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category and the question!", color=discord.Color.red()))
-        return
-    user_roles = ctx.author.roles
-    for role in user_roles:
-        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
-            admin = True
-            break
-        else:
-            admin = False
-    if admin == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    try:
-        del categories[category]['modal_questions'][question]
-        save_categories()
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was removed from {category}!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Category or question not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the question: {e}", color=discord.Color.red()))
-        return
-@FuncBot.hybrid_command(description="Updates question from ticket category")
-async def update_question(ctx, category="-1", question="-1", placeholder="-1", style="-1", mandatory="-1"):
-    if category == "-1" or question == "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category and the question!", color=discord.Color.red()))
-        return
-    user_roles = ctx.author.roles
-    for role in user_roles:
-        if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
-            admin = True
-            break
-        else:
-            admin = False
-    if admin == False:
-        await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
-        return
-    allowed_styles = ["text", "shorttext"]
-    if style.lower() not in allowed_styles and style != "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description=f"Style needs to be one of these: {allowed_styles}", color=discord.Color.red()))
-        return
-    if mandatory.lower() == "true":
-        mandatory = True
-    elif mandatory.lower() == "false":
-        mandatory = False
-    elif mandatory != "-1":
-        await ctx.send(embed=discord.Embed(title="Error", description="Mandatory needs to be true or false!", color=discord.Color.red()))
-        return
-    try:
-        if placeholder != "-1":
-            categories[category]['modal_questions'][question]['placeholder'] = placeholder
-        if style != "-1":
-            categories[category]['modal_questions'][question]['style'] = style.lower()
-        if mandatory != "-1":
-            categories[category]['modal_questions'][question]['mandatory'] = mandatory
-        save_categories()
-        await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was updated in {category}!", color=discord.Color.green()))
-    except KeyError:
-        await ctx.send(embed=discord.Embed(title="Error", description="Category or question not found!", color=discord.Color.red()))
-        return
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the question: {e}", color=discord.Color.red()))
-        return
+            await ctx.send(embed=discord.Embed(title="Error", description="Mandatory needs to be true or false!", color=discord.Color.red()))
+            return
+        try:
+            categories[category]['modal_questions'][question] = {
+                "label": question,
+                "placeholder": placeholder,
+                "style": style.lower(),
+                "mandatory": mandatory
+            }
+            save_categories()
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was added to {category}!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Category not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while adding the question: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Removes question from ticket category")
+    async def remove_question(ctx, category="-1", question="-1"):
+        if category == "-1" or question == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category and the question!", color=discord.Color.red()))
+            return
+        user_roles = ctx.author.roles
+        for role in user_roles:
+            if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+                admin = True
+                break
+            else:
+                admin = False
+        if admin == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        try:
+            del categories[category]['modal_questions'][question]
+            save_categories()
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was removed from {category}!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Category or question not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while removing the question: {e}", color=discord.Color.red()))
+            return
+    @FuncBot.hybrid_command(description="Updates question from ticket category")
+    async def update_question(ctx, category="-1", question="-1", placeholder="-1", style="-1", mandatory="-1"):
+        if category == "-1" or question == "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="You need to set the category and the question!", color=discord.Color.red()))
+            return
+        user_roles = ctx.author.roles
+        for role in user_roles:
+            if str(role.id) in settings['ticket_settings']['channel']['allowed_roles']:
+                admin = True
+                break
+            else:
+                admin = False
+        if admin == False:
+            await ctx.send(embed=discord.Embed(title="Error", description="You don't have permissions to use this command!", color=discord.Color.red()))
+            return
+        allowed_styles = ["text", "shorttext"]
+        if style.lower() not in allowed_styles and style != "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description=f"Style needs to be one of these: {allowed_styles}", color=discord.Color.red()))
+            return
+        if mandatory.lower() == "true":
+            mandatory = True
+        elif mandatory.lower() == "false":
+            mandatory = False
+        elif mandatory != "-1":
+            await ctx.send(embed=discord.Embed(title="Error", description="Mandatory needs to be true or false!", color=discord.Color.red()))
+            return
+        try:
+            if placeholder != "-1":
+                categories[category]['modal_questions'][question]['placeholder'] = placeholder
+            if style != "-1":
+                categories[category]['modal_questions'][question]['style'] = style.lower()
+            if mandatory != "-1":
+                categories[category]['modal_questions'][question]['mandatory'] = mandatory
+            save_categories()
+            await ctx.send(embed=discord.Embed(title="Success", description=f"Question {question} was updated in {category}!", color=discord.Color.green()))
+        except KeyError:
+            await ctx.send(embed=discord.Embed(title="Error", description="Category or question not found!", color=discord.Color.red()))
+            return
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(title="Error", description=f"There was an error while updating the question: {e}", color=discord.Color.red()))
+            return
 
 # Discord bot events
 @FuncBot.event

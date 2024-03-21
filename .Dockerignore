@@ -1,0 +1,6 @@
+logs/
+sql/
+.vscode/
+.git/
+.gitignore
+config/

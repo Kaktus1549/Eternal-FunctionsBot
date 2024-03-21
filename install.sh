@@ -1,38 +1,194 @@
 #!/bin/bash
 
-# Function to install dependencies
-install_dependencies() {
-    echo "Installing dependencies..."
-    pip3 install --upgrade -r requirements.txt
-    echo "Dependencies installed successfully."
-}
+clear
+base64 -d <<< "ICAgIF9fXyAgICAgICAgICAgICAgICBfXyAgICAgICAgICAgX18gICAgICAgICAgICAgX19fICAgX19fXyBfX18gIF9fIF9fCiAgIC8gICB8ICBfX19fICBfX19fIF8vIC9fICBfX19fX19fLyAvXyAgX19fXyBfICAgfF9fIFwgLyBfXyBcX18gXC8gLy8gLwogIC8gL3wgfCAvIF9fIFwvIF9fIGAvIC8gLyAvIC8gX19fLyBfXyBcLyBfXyBgLyAgIF9fLyAvLyAvIC8gL18vIC8gLy8gL18KIC8gX19fIHwvIC9fLyAvIC9fLyAvIC8gL18vIC8gL19fLyAvIC8gLyAvXy8gLyAgIC8gX18vLyAvXy8gLyBfXy9fXyAgX18vCi9fLyAgfF8vIC5fX18vXF9fLF8vXy9cX18sXy9cX19fL18vIC9fL1xfXyxfLyAgIC9fX19fL1xfX19fL19fX18vIC9fLyAgIAogICAgICAvXy8gCgo="
 
-# Function to compile the Python program to a binary
-compile_program() {
-    echo "Compiling the Python program..."
-    python3 -m PyInstaller --onefile FunctionBot.py
-    echo "Compilation completed."
-}
-
-# Function to remove unnecessary build files
-remove_build_files() {
-    mv ./dist/FunctionBot ./FunctionBot
-    echo "Removing unnecessary build files..."
-    rm -rf build dist 
-    rm FunctionBot.spec
-    echo "Build files removed."
-}
-
-# Main script execution
-echo "============> Installing dependencies for Function bot! <============"
+echo "Welcome to the Eternal discord bot installation script."
+echo "This script will guide you through the installation process."
+echo "Please make sure you have Docker and Docker Compose installed. If you want leave default values, just press Enter."
 echo ""
-install_dependencies
 
-# Prompt user to compile the program to a binary
-read -p "Do you want to compile the program to a binary? (y/n): " compile_choice
-if [[ $compile_choice =~ ^[Yy]$ ]]; then
-    compile_program
-    remove_build_files
+echo "Discord bot configuration"
+echo "----------------------"
+echo ""
+
+# Prompt for environment variables
+read -p "Enter bot token (default: TOKEN): " BOT_TOKEN
+BOT_TOKEN=${BOT_TOKEN:-TOKEN}
+read -p "Enter bot prefix (default: !): " BOT_PREFIX
+BOT_PREFIX=${BOT_PREFIX:-!}
+read -p "Enter role ID whois allowed to use sync command (default: 772112186927480832): " SYNC_ROLE
+SYNC_ROLE=${SYNC_ROLE:-772112186927480832}
+
+clear
+base64 -d <<< "ICAgIF9fXyAgICAgICAgICAgICAgICBfXyAgICAgICAgICAgX18gICAgICAgICAgICAgX19fICAgX19fXyBfX18gIF9fIF9fCiAgIC8gICB8ICBfX19fICBfX19fIF8vIC9fICBfX19fX19fLyAvXyAgX19fXyBfICAgfF9fIFwgLyBfXyBcX18gXC8gLy8gLwogIC8gL3wgfCAvIF9fIFwvIF9fIGAvIC8gLyAvIC8gX19fLyBfXyBcLyBfXyBgLyAgIF9fLyAvLyAvIC8gL18vIC8gLy8gL18KIC8gX19fIHwvIC9fLyAvIC9fLyAvIC8gL18vIC8gL19fLyAvIC8gLyAvXy8gLyAgIC8gX18vLyAvXy8gLyBfXy9fXyAgX18vCi9fLyAgfF8vIC5fX18vXF9fLF8vXy9cX18sXy9cX19fL18vIC9fL1xfXyxfLyAgIC9fX19fL1xfX19fL19fX18vIC9fLyAgIAogICAgICAvXy8gCgo="
+
+echo "Database configuration"
+echo "----------------------"
+echo ""
+
+# Prompt for environment variables
+read -p "Enter database user (default: Et3rnalG4ming): " DATABASE_USER
+DATABASE_USER=${DATABASE_USER:-Et3rnalG4ming} # Default value if none provided
+read -sp "Enter database password: (default: fkljfljlkečuíšáaudfoljfaqíášč#_??) " DATABASE_PASSWORD
+DATABASE_PASSWORD=${DATABASE_PASSWORD:-fkljfljlkečuíšáaudfoljfaqíášč#_??} # Default value if none provided
+echo ""
+read -p "Enter pool size (default: 20): " POOL_SIZE
+POOL_SIZE=${POOL_SIZE:-20} # Default value if none provided
+read -p "Enter database port (default: 3306): " DATABASE_PORT
+DATABASE_PORT=${DATABASE_PORT:-3306} # Default value if none provided
+
+clear
+base64 -d <<< "ICAgIF9fXyAgICAgICAgICAgICAgICBfXyAgICAgICAgICAgX18gICAgICAgICAgICAgX19fICAgX19fXyBfX18gIF9fIF9fCiAgIC8gICB8ICBfX19fICBfX19fIF8vIC9fICBfX19fX19fLyAvXyAgX19fXyBfICAgfF9fIFwgLyBfXyBcX18gXC8gLy8gLwogIC8gL3wgfCAvIF9fIFwvIF9fIGAvIC8gLyAvIC8gX19fLyBfXyBcLyBfXyBgLyAgIF9fLyAvLyAvIC8gL18vIC8gLy8gL18KIC8gX19fIHwvIC9fLyAvIC9fLyAvIC8gL18vIC8gL19fLyAvIC8gLyAvXy8gLyAgIC8gX18vLyAvXy8gLyBfXy9fXyAgX18vCi9fLyAgfF8vIC5fX18vXF9fLF8vXy9cX18sXy9cX19fL18vIC9fL1xfXyxfLyAgIC9fX19fL1xfX19fL19fX18vIC9fLyAgIAogICAgICAvXy8gCgo="
+
+echo "VIP configuration"
+echo "----------------------"
+echo ""
+
+# Prompt for environment variables
+read -p "Enable VIP (default: false): " VIP_ENABLED
+VIP_ENABLED=${VIP_ENABLED:-false} # Default value if none provided
+if [ "$VIP_ENABLED" = "false" ]; then
+    KONTRIBUTOR="ROLE_ID"
+    DONATOR="ROLE_ID"
+    SPONZOR="ROLE_ID"
+    BOOSTER="ROLE_ID"
+    PODPOROVATEL="ROLE_ID"
+    INVESTOR="ROLE_ID"
+else
+    read -p "Enter kontributor role ID (default: ROLE_ID): " KONTRIBUTOR
+    KONTRIBUTOR=${KONTRIBUTOR:-ROLE_ID}
+    read -p "Enter donator role ID (default: ROLE_ID): " DONATOR
+    DONATOR=${DONATOR:-ROLE_ID}
+    read -p "Enter sponzor role ID (default: ROLE_ID): " SPONZOR
+    SPONZOR=${SPONZOR:-ROLE_ID}
+    read -p "Enter booster role ID (default: ROLE_ID): " BOOSTER
+    BOOSTER=${BOOSTER:-ROLE_ID}
+    read -p "Enter podporovatel role ID (default: ROLE_ID): " PODPOROVATEL
+    PODPOROVATEL=${PODPOROVATEL:-ROLE_ID}
+    read -p "Enter investor role ID (default: ROLE_ID): " INVESTOR
+    INVESTOR=${INVESTOR:-ROLE_ID}
 fi
 
-echo "Func bot setup completed!"
+clear
+base64 -d <<< "ICAgIF9fXyAgICAgICAgICAgICAgICBfXyAgICAgICAgICAgX18gICAgICAgICAgICAgX19fICAgX19fXyBfX18gIF9fIF9fCiAgIC8gICB8ICBfX19fICBfX19fIF8vIC9fICBfX19fX19fLyAvXyAgX19fXyBfICAgfF9fIFwgLyBfXyBcX18gXC8gLy8gLwogIC8gL3wgfCAvIF9fIFwvIF9fIGAvIC8gLyAvIC8gX19fLyBfXyBcLyBfXyBgLyAgIF9fLyAvLyAvIC8gL18vIC8gLy8gL18KIC8gX19fIHwvIC9fLyAvIC9fLyAvIC8gL18vIC8gL19fLyAvIC8gLyAvXy8gLyAgIC8gX18vLyAvXy8gLyBfXy9fXyAgX18vCi9fLyAgfF8vIC5fX18vXF9fLF8vXy9cX18sXy9cX19fL18vIC9fL1xfXyxfLyAgIC9fX19fL1xfX19fL19fX18vIC9fLyAgIAogICAgICAvXy8gCgo="
+
+echo "LeaderBoard configuration"
+echo "----------------------"
+echo ""
+
+# Prompt for environment variables
+read -p "Enable LeaderBoard (default: false): " LEADERBOARD_ENABLED
+LEADERBOARD_ENABLED=${LEADERBOARD_ENABLED:-false} # Default value if none provided
+if [ "$LEADERBOARD_ENABLED" = "false" ]; then
+    LEADERBOARD_CHANNEL="CHANNEL_ID"
+    DEFAULT_LEADERBOARD_TEXT="Default text"
+    MESSAGE_LIMIT=150
+else
+    read -p "Enter LeaderBoard channel ID (default: CHANNEL_ID): " LEADERBOARD_CHANNEL
+    LEADERBOARD_CHANNEL=${LEADERBOARD_CHANNEL:-CHANNEL_ID}
+    read -p "Enter default LeaderBoard text (default: Default text): " DEFAULT_LEADERBOARD_TEXT
+    DEFAULT_LEADERBOARD_TEXT=${DEFAULT_LEADERBOARD_TEXT:-Default text}
+    read -p "Enter message limit (default: 150): " MESSAGE_LIMIT
+    MESSAGE_LIMIT=${MESSAGE_LIMIT:-150}
+fi
+
+clear
+base64 -d <<< "ICAgIF9fXyAgICAgICAgICAgICAgICBfXyAgICAgICAgICAgX18gICAgICAgICAgICAgX19fICAgX19fXyBfX18gIF9fIF9fCiAgIC8gICB8ICBfX19fICBfX19fIF8vIC9fICBfX19fX19fLyAvXyAgX19fXyBfICAgfF9fIFwgLyBfXyBcX18gXC8gLy8gLwogIC8gL3wgfCAvIF9fIFwvIF9fIGAvIC8gLyAvIC8gX19fLyBfXyBcLyBfXyBgLyAgIF9fLyAvLyAvIC8gL18vIC8gLy8gL18KIC8gX19fIHwvIC9fLyAvIC9fLyAvIC8gL18vIC8gL19fLyAvIC8gLyAvXy8gLyAgIC8gX18vLyAvXy8gLyBfXy9fXyAgX18vCi9fLyAgfF8vIC5fX18vXF9fLF8vXy9cX18sXy9cX19fL18vIC9fL1xfXyxfLyAgIC9fX19fL1xfX19fL19fX18vIC9fLyAgIAogICAgICAvXy8gCgo="
+
+echo "Info configuration"
+echo "----------------------"
+echo ""
+
+# Prompt for environment variables
+read -p "Enable Info (default: false): " INFO_ENABLED
+INFO_ENABLED=${INFO_ENABLED:-false} # Default value if none provided
+if [ "$INFO_ENABLED" = "false" ]; then
+    INFO_CHANNEL="CHANNEL_ID"
+    INFO_MESSAGE="Default text"
+    INFO_LIMIT=150
+    INFO_ROLES="ROLE_ID"
+else
+    read -p "Enter Info channel ID (default: CHANNEL_ID): " INFO_CHANNEL
+    INFO_CHANNEL=${INFO_CHANNEL:-CHANNEL_ID}
+    read -p "Enter default Info text (default: Default text): " INFO_MESSAGE
+    INFO_MESSAGE=${INFO_MESSAGE:-Default text}
+    read -p "Enter message limit (default: 150): " INFO_LIMIT
+    INFO_LIMIT=${INFO_LIMIT:-150}
+    read -p "Enter roles ID who can use Info command -> if there are more roles, separate them by comma \"111, 222, 333\" (default: ROLE_ID): " INFO_ROLES
+    INFO_ROLES=${INFO_ROLES:-ROLE_ID}
+fi
+
+clear
+base64 -d <<< "ICAgIF9fXyAgICAgICAgICAgICAgICBfXyAgICAgICAgICAgX18gICAgICAgICAgICAgX19fICAgX19fXyBfX18gIF9fIF9fCiAgIC8gICB8ICBfX19fICBfX19fIF8vIC9fICBfX19fX19fLyAvXyAgX19fXyBfICAgfF9fIFwgLyBfXyBcX18gXC8gLy8gLwogIC8gL3wgfCAvIF9fIFwvIF9fIGAvIC8gLyAvIC8gX19fLyBfXyBcLyBfXyBgLyAgIF9fLyAvLyAvIC8gL18vIC8gLy8gL18KIC8gX19fIHwvIC9fLyAvIC9fLyAvIC8gL18vIC8gL19fLyAvIC8gLyAvXy8gLyAgIC8gX18vLyAvXy8gLyBfXy9fXyAgX18vCi9fLyAgfF8vIC5fX18vXF9fLF8vXy9cX18sXy9cX19fL18vIC9fL1xfXyxfLyAgIC9fX19fL1xfX19fL19fX18vIC9fLyAgIAogICAgICAvXy8gCgo="
+
+echo "Tickets configuration"
+echo "----------------------"
+
+# Prompt for environment variables
+read -p "Enable Tickets (default: false): " TICKETS_ENABLED
+TICKETS_ENABLED=${TICKETS_ENABLED:-false} # Default value if none provided
+if [ "$TICKETS_ENABLED" = "false" ]; then
+    TICKETS_CHANNEL="CHANNEL_ID"
+    TICKETS_CATEGORY="CATEGORY_ID"
+    TICKETS_MESSAGE="Default text"
+    TICKETS_LOG_CHANNEL="CHANNEL_ID"
+    TICKETS_LIMIT=150
+    TICKETS_ROLES="ROLE_ID"
+else
+    read -p "Enter Tickets channel ID (default: CHANNEL_ID): " TICKETS_CHANNEL
+    TICKETS_CHANNEL=${TICKETS_CHANNEL:-CHANNEL_ID}
+    read -p "Enter Tickets category ID (default: CATEGORY_ID): " TICKETS_CATEGORY
+    TICKETS_CATEGORY=${TICKETS_CATEGORY:-CATEGORY_ID}
+    read -p "Enter default Tickets text (default: Default text): " TICKETS_MESSAGE
+    TICKETS_MESSAGE=${TICKETS_MESSAGE:-Default text}
+    read -p "Enter Tickets log channel ID (default: CHANNEL_ID): " TICKETS_LOG_CHANNEL
+    TICKETS_LOG_CHANNEL=${TICKETS_LOG_CHANNEL:-CHANNEL_ID}
+    read -p "Enter message limit (default: 150): " TICKETS_LIMIT
+    TICKETS_LIMIT=${TICKETS_LIMIT:-150}
+    read -p "Enter roles ID who can use Tickets command -> if there are more roles, separate them by comma \"111, 222, 333\" (default: ROLE_ID): " TICKETS_ROLES
+    TICKETS_ROLES=${TICKETS_ROLES:-ROLE_ID}
+fi
+
+clear
+
+base64 -d <<< "ICAgIF9fXyAgICAgICAgICAgICAgICBfXyAgICAgICAgICAgX18gICAgICAgICAgICAgX19fICAgX19fXyBfX18gIF9fIF9fCiAgIC8gICB8ICBfX19fICBfX19fIF8vIC9fICBfX19fX19fLyAvXyAgX19fXyBfICAgfF9fIFwgLyBfXyBcX18gXC8gLy8gLwogIC8gL3wgfCAvIF9fIFwvIF9fIGAvIC8gLyAvIC8gX19fLyBfXyBcLyBfXyBgLyAgIF9fLyAvLyAvIC8gL18vIC8gLy8gL18KIC8gX19fIHwvIC9fLyAvIC9fLyAvIC8gL18vIC8gL19fLyAvIC8gLyAvXy8gLyAgIC8gX18vLyAvXy8gLyBfXy9fXyAgX18vCi9fLyAgfF8vIC5fX18vXF9fLF8vXy9cX18sXy9cX19fL18vIC9fL1xfXyxfLyAgIC9fX19fL1xfX19fL19fX18vIC9fLyAgIAogICAgICAvXy8gCgo="
+echo "Pulling images from Docker Hub..."
+
+# Write environment variables to .env file
+
+cat << EOF > ./.env
+BOT_TOKEN=$BOT_TOKEN
+BOT_PREFIX=$BOT_PREFIX
+SYNC_ROLE=$SYNC_ROLE
+DATABASE_USER=$DATABASE_USER
+DATABASE_PASSWORD=$DATABASE_PASSWORD
+POOL_SIZE=$POOL_SIZE
+DATABASE_PORT=$DATABASE_PORT
+VIP_ENABLED=$VIP_ENABLED
+KONTRIBUTOR=$KONTRIBUTOR
+DONATOR=$DONATOR
+SPONZOR=$SPONZOR
+BOOSTER=$BOOSTER
+PODPOROVATEL=$PODPOROVATEL
+INVESTOR=$INVESTOR
+LEADERBOARD_ENABLED=$LEADERBOARD_ENABLED
+LEADERBOARD_CHANNEL=$LEADERBOARD_CHANNEL
+DEFAULT_LEADERBOARD_TEXT=$DEFAULT_LEADERBOARD_TEXT
+MESSAGE_LIMIT=$MESSAGE_LIMIT
+INFO_ENABLED=$INFO_ENABLED
+INFO_CHANNEL=$INFO_CHANNEL
+INFO_MESSAGE=$INFO_MESSAGE
+INFO_LIMIT=$INFO_LIMIT
+INFO_ROLES=$INFO_ROLES
+TICKETS_ENABLED=$TICKETS_ENABLED
+TICKETS_CHANNEL=$TICKETS_CHANNEL
+TICKETS_CATEGORY=$TICKETS_CATEGORY
+TICKETS_MESSAGE=$TICKETS_MESSAGE
+TICKETS_LOG_CHANNEL=$TICKETS_LOG_CHANNEL
+TICKETS_LIMIT=$TICKETS_LIMIT
+TICKETS_ROLES=$TICKETS_ROLES
+EOF
+
+# Run Docker Composer
+docker-compose up --build -d

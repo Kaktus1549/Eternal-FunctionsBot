@@ -1,4 +1,4 @@
-CREATE TABLE discord_tickets (
+CREATE TABLE IF NOT EXISTS discord_tickets (
     Ticket_ID INT NOT NULL PRIMARY KEY AUTO_INCREMENT, -- Ticket ID
     Discord_ID BIGINT NOT NULL, -- Discord ID of the ticket creator
     Opened BOOLEAN NOT NULL DEFAULT TRUE, -- Whether the ticket is open or closed
